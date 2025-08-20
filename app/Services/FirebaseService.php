@@ -11,26 +11,27 @@ class FirebaseService
 {
     protected $database;
 
-    public function __construct()
-    {
-        try {
-            $serviceAccountPath = storage_path('storage/flare-capstone-468319-firebase-adminsdk-fbsvc-8801f2bb31.json');
-            if (!file_exists($serviceAccountPath)) {
-                throw new \RuntimeException("Firebase service account file not found at: {$serviceAccountPath}");
-            }
-            if (!is_readable($serviceAccountPath)) {
-                throw new \RuntimeException("Firebase service account file is not readable at: {$serviceAccountPath}");
-            }
+  public function __construct()
+{
+    try {
+        $serviceAccount = [
+            'type'         => 'service_account',
+            'project_id'   => (string) config('services.firebase.project_id'),
+            'client_email' => (string) config('services.firebase.client_email'),
+            'private_key'  => str_replace('\n', "\n", (string) config('services.firebase.private_key')),
+        ];
 
-            $firebase = (new Factory)
-                ->withServiceAccount($serviceAccountPath)
-                ->withDatabaseUri(env('FIREBASE_DATABASE_URL'));
+        $firebase = (new Factory())
+            ->withServiceAccount($serviceAccount)
+            ->withDatabaseUri((string) config('services.firebase.database_url'));
 
-            $this->database = $firebase->createDatabase();
-        } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to initialize Firebase: " . $e->getMessage());
-        }
+        $this->database = $firebase->createDatabase();
+    } catch (\Throwable $e) {
+        Log::critical('Firebase init failed', ['error' => $e->getMessage()]);
+        abort(500, 'Service initialization error');
     }
+}
+
 
     // ---------- Readers (scoped by station prefix) ----------
     public function getFireReports(string $prefix): array
