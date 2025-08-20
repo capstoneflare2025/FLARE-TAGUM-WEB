@@ -176,53 +176,6 @@
         leafletLayersGroup.addLayer(reportMarker);
         leafletLayersGroup.addLayer(stationMarker);
         leafletLayersGroup.addLayer(circle);
-
-        // Overpass API to display nearby buildings
-        const query = `
-            [out:json];
-            (
-                way["building"](around:30,${reportLat},${reportLng});
-                relation["building"](around:30,${reportLat},${reportLng});
-            );
-            out body;
-            >;
-            out skel qt;
-        `;
-
-        fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: query,
-        })
-        .then(res => res.json())
-        .then(data => {
-            const nodes = {};
-            data.elements.forEach(el => {
-                if (el.type === 'node') {
-                    nodes[el.id] = [el.lat, el.lon];
-                }
-            });
-
-            const buildings = data.elements.filter(el => el.type === 'way').map(way =>
-                way.nodes.map(id => nodes[id]).filter(Boolean)
-            );
-
-            buildings.forEach(coords => {
-                const polygon = L.polygon(coords, {
-                    color: 'blue',
-                    weight: 1,
-                    fillOpacity: 0.2,
-                });
-                leafletLayersGroup.addLayer(polygon);
-            });
-
-            const buildingsInside = buildings.filter(coords =>
-                coords.some(([lat, lng]) => leafletMap.distance([reportLat, reportLng], [lat, lng]) <= 30)
-            ).length;
-
-            if (buildingsInside < 3) {
-                circle.setStyle({ opacity: 0, fillOpacity: 0 });
-            }
-        }).catch(err => console.error('Overpass error:', err));
     }
 </script>
 @endpush

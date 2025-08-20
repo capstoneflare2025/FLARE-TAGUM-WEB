@@ -39,16 +39,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Firebase config
-    const firebaseConfig = {
-        apiKey: "AIzaSyC1CtwiZwi120k6VrJwbFGKIY4pEJyxHxU",
-        authDomain: "flare-capstone-c029d.firebaseapp.com",
-        databaseURL: "https://flare-capstone-c029d-default-rtdb.firebaseio.com",
-        projectId: "flare-capstone-c029d",
-        storageBucket: "flare-capstone-c029d.firebasestorage.app",
-        messagingSenderId: "683706660470",
-        appId: "1:683706660470:web:d1302ac460f71bf8929157",
-        measurementId: "G-QDWQJKCYPN"
-    };
+   const firebaseConfig = {
+  apiKey: "AIzaSyAb50PtW6vHKhHC29zRfI2GKmQ4nddMG5A",
+  authDomain: "flare-capstone-468319.firebaseapp.com",
+  databaseURL: "https://flare-capstone-468319-default-rtdb.firebaseio.com",
+  projectId: "flare-capstone-468319",
+  storageBucket: "flare-capstone-468319.firebasestorage.app",
+  messagingSenderId: "272168206378",
+  appId: "1:272168206378:web:9db2f6ca754d5a57cc8353",
+  measurementId: "G-CQH6ZLSM5R"
+};
 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);

@@ -83,13 +83,14 @@
 <script>
 // --- Firebase init ---
 const firebaseConfig = {
-  apiKey: "AIzaSyC1CtwiZwi120k6VrJwbFGKIY4pEJyxHxU",
-  authDomain: "flare-capstone-c029d.firebaseapp.com",
-  databaseURL: "https://flare-capstone-c029d-default-rtdb.firebaseio.com",
-  projectId: "flare-capstone-c029d",
-  storageBucket: "flare-capstone-c029d.appspot.com",
-  messagingSenderId: "683706660470",
-  appId: "1:683706660470:web:d1302ac460f71bf8929157"
+  apiKey: "AIzaSyAb50PtW6vHKhHC29zRfI2GKmQ4nddMG5A",
+  authDomain: "flare-capstone-468319.firebaseapp.com",
+  databaseURL: "https://flare-capstone-468319-default-rtdb.firebaseio.com",
+  projectId: "flare-capstone-468319",
+  storageBucket: "flare-capstone-468319.firebasestorage.app",
+  messagingSenderId: "272168206378",
+  appId: "1:272168206378:web:9db2f6ca754d5a57cc8353",
+  measurementId: "G-CQH6ZLSM5R"
 };
 firebase.initializeApp(firebaseConfig);
 
@@ -121,10 +122,8 @@ document.getElementById('activeStationLabel').innerText = cfg ? cfg.label : 'Unk
 // ---------- Helpers ----------
 function makeReadableId(prefix) {
   const year = new Date().getFullYear();
-  // create a short readable suffix from a push key
   const newRef = firebase.database().ref().child('tmp').push();
   const key = newRef.key || Math.random().toString(36).slice(2);
-  // we won't store to /tmp; the push was only to get a key. remove it:
   newRef.remove();
   const suffix = key.slice(-5).toUpperCase();
   return `${prefix}-${year}-${suffix}`;
@@ -229,7 +228,22 @@ document.getElementById('closeViewModalBtn').onclick = () => {
   document.getElementById('viewModal').classList.add('hidden');
 };
 
-// ---------- Create/Update (NO __seq writes) ----------
+// ---------- Check for duplicates ----------
+
+function checkForDuplicates(name, email) {
+  const allFightersRef = firebase.database().ref();
+  const promises = Object.keys(stationConfig).map(station => {
+    const path = `${station}/${stationConfig[station].fightersSub}`;
+    return allFightersRef.child(path).once('value').then(snapshot => {
+      const data = snapshot.val();
+      return Object.values(data || {}).some(fighter => fighter.name === name && fighter.email === email);
+    });
+  });
+
+  return Promise.all(promises).then(results => results.some(result => result));
+}
+
+// ---------- Create/Update (Check for duplicates) ----------
 document.getElementById('addFirefighterForm').onsubmit = e => {
   e.preventDefault();
   if (!fightersPath || !cfg) return;
@@ -240,28 +254,34 @@ document.getElementById('addFirefighterForm').onsubmit = e => {
   const contact = document.getElementById('contact').value.trim();
   const birthday = document.getElementById('birthday').value;
 
-  if (key) {
-    // Update existing
-    firebase.database().ref(`${fightersPath}/${key}`).once('value').then(snap => {
-      const existing = snap.val() || {};
-      const data = { id: existing.id, name, email, contact, birthday };
-      return firebase.database().ref(`${fightersPath}/${key}`).set(data);
-    }).then(() => {
+  checkForDuplicates(name, email).then(isDuplicate => {
+    if (isDuplicate) {
+      alert('A firefighter with the same name and email already exists.');
+      return;
+    }
+
+    if (key) {
+      firebase.database().ref(`${fightersPath}/${key}`).once('value').then(snap => {
+        const existing = snap.val() || {};
+        const data = { id: existing.id, name, email, contact, birthday };
+        return firebase.database().ref(`${fightersPath}/${key}`).set(data);
+      }).then(() => {
+        document.getElementById('addModal').classList.add('hidden');
+      });
+      return;
+    }
+
+    const newKey = firebase.database().ref(fightersPath).push().key;
+    const generatedId = makeReadableId(cfg.prefix);
+    const data = { id: generatedId, name, email, contact, birthday };
+
+    firebase.database().ref(`${fightersPath}/${newKey}`).set(data).then(() => {
       document.getElementById('addModal').classList.add('hidden');
     });
-    return;
-  }
-
-  // Create new (generate id from push().key, but DO NOT create any __seq node)
-  const newKey = firebase.database().ref(fightersPath).push().key;
-  const generatedId = makeReadableId(cfg.prefix);
-  const data = { id: generatedId, name, email, contact, birthday };
-
-  firebase.database().ref(`${fightersPath}/${newKey}`).set(data).then(() => {
-    document.getElementById('addModal').classList.add('hidden');
   });
 };
 
 window.addEventListener('DOMContentLoaded', loadFirefighters);
 </script>
+
 @endsection

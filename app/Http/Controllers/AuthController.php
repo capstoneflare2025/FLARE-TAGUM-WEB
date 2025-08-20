@@ -18,7 +18,7 @@ class AuthController extends Controller
     {
         try {
             // Match the same service account path logic as FirebaseService
-            $serviceAccountPath = storage_path('storage/flare-capstone-c029d-firebase-adminsdk-fbsvc-fea819ac7f.json');
+            $serviceAccountPath = storage_path('storage/flare-capstone-468319-firebase-adminsdk-fbsvc-8801f2bb31.json');
 
             // Check existence and readability like FirebaseService does
             if (!file_exists($serviceAccountPath)) {
@@ -49,6 +49,18 @@ class AuthController extends Controller
     $email = $request->input('email');
     $password = $request->input('password');
 
+    // Define the list of allowed emails
+    $allowedEmails = [
+        'mabini123@gmail.com',
+        'lafilipina123@gmail.com',
+        'canocotan123@gmail.com'
+    ];
+
+    // Check if the email is in the allowed list
+    if (!in_array($email, $allowedEmails)) {
+        return back()->withErrors(['login' => 'Invalid credentials.'])->withInput();
+    }
+
     try {
         $firebaseApiKey = config('services.firebase.api_key');
 
@@ -60,6 +72,7 @@ class AuthController extends Controller
         ]);
 
         if (!$response->ok()) {
+            // Do not return specific password errors
             return back()->withErrors(['login' => 'Invalid credentials.'])->withInput();
         }
 
@@ -72,7 +85,7 @@ class AuthController extends Controller
         // Log the Firebase data (for debugging)
         Log::info('Firebase Authentication Successful', ['uid' => $uid, 'email' => $email]);
 
-        // Store Firebase data in session (make sure the session is properly set)
+        // Store Firebase data in session
         Session::put('firebase_user_email', $email); // Storing email in session
         Session::put('firebase_user_uid', $uid); // Storing email in session
 
@@ -80,15 +93,14 @@ class AuthController extends Controller
         Log::info('Session data after login', ['session' => session()->all()]);
 
         // Redirect to dashboard
-            // Replace intended URL with direct redirect to dashboard
         return redirect()->route('dashboard');
-
 
     } catch (\Throwable $e) {
         Log::error('Login failed', ['error' => $e->getMessage()]);
         return back()->withErrors(['login' => 'Login failed: ' . $e->getMessage()])->withInput();
     }
 }
+
 
 
 

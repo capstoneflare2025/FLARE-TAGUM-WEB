@@ -12,7 +12,7 @@
     $activeCount = collect($fireReports)->where('status', 'Ongoing')->count()
                  + collect($otherEmergencyReports)->where('status', 'Ongoing')->count();
 
-    // Merge and sort recent reports
+    // Merge and sort recent reports by date and reportTime, then limit to the first 5
     $recent = collect($fireReports)->merge($otherEmergencyReports)->sortByDesc(function ($r) {
         $d = trim((string)($r['date'] ?? ''));
         $t = trim((string)($r['reportTime'] ?? ''));
@@ -21,7 +21,7 @@
             $d = sprintf('%s-%s-%s', $parts[2], str_pad($parts[1], 2, '0', STR_PAD_LEFT), str_pad($parts[0], 2, '0', STR_PAD_LEFT));
         }
         return strtotime("$d $t") ?: 0;
-    })->values()->all();
+    })->take(5)->values()->all();
 @endphp
 
 <div class="container mx-auto p-6">
@@ -105,7 +105,7 @@
         if (merged.length === 0) {
             frag.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No incidents available today</td></tr>`;
         } else {
-            merged.forEach(report => {
+            merged.slice(0, 5).forEach(report => {
                 const status = (report.status || 'Unknown').toLowerCase();
                 const color = status === 'ongoing' ? 'red'
                             : (status === 'completed' ? 'green'

@@ -14,7 +14,7 @@ class FirebaseService
     public function __construct()
     {
         try {
-            $serviceAccountPath = storage_path('storage/flare-capstone-c029d-firebase-adminsdk-fbsvc-fea819ac7f.json');
+            $serviceAccountPath = storage_path('storage/flare-capstone-468319-firebase-adminsdk-fbsvc-8801f2bb31.json');
             if (!file_exists($serviceAccountPath)) {
                 throw new \RuntimeException("Firebase service account file not found at: {$serviceAccountPath}");
             }
