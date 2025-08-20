@@ -32,7 +32,6 @@ class FirebaseService
     }
 }
 
-
     // ---------- Readers (scoped by station prefix) ----------
     public function getFireReports(string $prefix): array
     {
