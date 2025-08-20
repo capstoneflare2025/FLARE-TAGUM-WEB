@@ -17,25 +17,19 @@ class AuthController extends Controller
     public function __construct()
     {
         try {
-            // Match the same service account path logic as FirebaseService
-            $serviceAccountPath = storage_path('storage/flare-capstone-468319-firebase-adminsdk-fbsvc-8801f2bb31.json');
+            $serviceAccount = [
+                'type'         => 'service_account',
+                'project_id'   => (string) config('services.firebase.project_id'),
+                'client_email' => (string) config('services.firebase.client_email'),
+                'private_key'  => str_replace('\n', "\n", (string) config('services.firebase.private_key')),
+            ];
 
-            // Check existence and readability like FirebaseService does
-            if (!file_exists($serviceAccountPath)) {
-                throw new \RuntimeException("Firebase service account file not found at: {$serviceAccountPath}");
-            }
-
-            if (!is_readable($serviceAccountPath)) {
-                throw new \RuntimeException("Firebase service account file is not readable at: {$serviceAccountPath}");
-            }
-
-            // Initialize Firebase Auth
-            $this->auth = (new Factory)
-                ->withServiceAccount($serviceAccountPath)
+            $this->auth = (new Factory())
+                ->withServiceAccount($serviceAccount)
                 ->createAuth();
-
-        } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to initialize Firebase Auth: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::critical('Firebase Auth init failed', ['error' => $e->getMessage()]);
+            abort(500, 'Service initialization error');
         }
     }
 
