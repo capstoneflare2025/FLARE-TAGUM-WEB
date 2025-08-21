@@ -33,8 +33,8 @@
                                 <tr class="bg-gray-100">
                                     <th class="px-4 py-2 text-left text-gray-600">#</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Location</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Level</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+                                    {{-- <th class="px-4 py-2 text-left text-gray-600">Level</th> --}}
+                                   <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusFireDatePicker()">Date & Time</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Status</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Action</th>
                                 </tr>
@@ -105,8 +105,9 @@
                                     <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="fireReports">
                                         <td class="px-4 py-2">{{ $index + 1 }}</td>
                                         <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
-                                        <td class="px-4 py-2">{{ $report['alertLevel'] ?? 'Unknown' }}</td>
-                                        <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+                                        {{-- <td class="px-4 py-2">{{ $report['alertLevel'] ?? 'Unknown' }}</td> --}}
+                                     <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+
                                         <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
                                             {{ $report['status'] ?? 'Unknown' }}
                                         </td>
@@ -145,7 +146,7 @@
                                     <th class="px-4 py-2 text-left text-gray-600">#</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Location</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Emergency Type</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+                                    <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusOtherDatePicker()">Date & Time</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Status</th>
                                     <th class="px-4 py-2 text-left text-gray-600">Action</th>
                                 </tr>
@@ -212,7 +213,9 @@
                                         <td class="px-4 py-2">{{ $index + 1 }}</td>
                                         <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
                                         <td class="px-4 py-2">{{ $report['emergencyType'] ?? 'N/A' }}</td>
-                                        <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+                                  <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+
+
                                         <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
                                             {{ $report['status'] ?? 'Unknown' }}
                                         </td>
@@ -396,6 +399,7 @@
                 handleUrlParams();
                 initializeRealTimeListener();
                 toggleIncidentTables();
+                normalizeInitialTimes();
                 });
 
                 function handleUrlParams() {
@@ -439,6 +443,32 @@
                 let replyListenerRef = null;
                 let leafletMap = null;
                 let leafletLayersGroup = null;
+
+                function to24h(t) {
+                if (!t) return '';
+                // Accept "H:MM", "HH:MM", optional seconds, optional AM/PM
+                const m = String(t).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+                if (!m) return t; // unknown format, return as-is
+                let [ , hh, mm, ap ] = m;
+                let h = parseInt(hh, 10);
+                if (ap) {
+                    const up = ap.toUpperCase();
+                    if (up === 'PM' && h !== 12) h += 12;
+                    if (up === 'AM' && h === 12) h = 0;
+                }
+                return `${String(h).padStart(2,'0')}:${mm}`;
+                }
+
+                function dateToISO(dmy) {
+                // expects dd/mm/yyyy or dd/mm/yy
+                if (!dmy) return '';
+                const parts = dmy.split('/');
+                if (parts.length !== 3) return '';
+                const [dd, mm, yy] = parts;
+                const yyyy = yy.length === 2 ? `20${yy}` : yy;
+                return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+                }
+
 
                 // ==================================================
                 // Station Helpers
@@ -516,74 +546,82 @@
                 }
 
 
+                                // ==================================================
+                // Patch helpers
                 // ==================================================
-// Patch helpers
-// ==================================================
-function applyRealtimePatch(snapshot, reportType) {
-  const id = snapshot.key;
-  const patch = snapshot.val() || {};
-  const arr = reportType === 'fireReports' ? fireReports : otherEmergencyReports;
+                function applyRealtimePatch(snapshot, reportType) {
+                const id = snapshot.key;
+                const patch = snapshot.val() || {};
+                const arr = reportType === 'fireReports' ? fireReports : otherEmergencyReports;
 
-  // update in-memory array
-  const i = arr.findIndex(r => r.id === id);
-  if (i !== -1) arr[i] = { ...arr[i], ...patch, id };
+                // update in-memory array
+                const i = arr.findIndex(r => r.id === id);
+                if (i !== -1) arr[i] = { ...arr[i], ...patch, id };
 
-  // patch DOM row if it exists
-  const row = document.getElementById(`reportRow${id}`);
-  if (!row) return;
+                // patch DOM row if it exists
+                const row = document.getElementById(`reportRow${id}`);
+                if (!row) return;
 
-  // update data-report payload
-  row.setAttribute('data-report', JSON.stringify(arr[i] || patch));
 
-  // update status cell if status changed
-  if (typeof patch.status !== 'undefined') {
-    const statusCell = row.querySelector('.status');
-    if (statusCell) {
-      statusCell.textContent = patch.status;
-      // reset color classes
-      statusCell.classList.remove(
-        'text-red-500','text-green-500','text-orange-500','text-blue-500','text-yellow-500'
-      );
-      const color =
-        patch.status === 'Ongoing'   ? 'red'    :
-        patch.status === 'Completed' ? 'green'  :
-        patch.status === 'Pending'   ? 'orange' :
-        patch.status === 'Received'  ? 'blue'   : 'yellow';
-      statusCell.classList.add(`text-${color}-500`);
-    }
-  }
 
-  // update other visible cells if relevant fields changed
-  if (reportType === 'fireReports') {
-    if (typeof patch.exactLocation !== 'undefined')
-      row.children[1].textContent = patch.exactLocation || 'N/A';
-    if (typeof patch.alertLevel !== 'undefined')
-      row.children[2].textContent = patch.alertLevel || 'Unknown';
-    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-      const r = JSON.parse(row.getAttribute('data-report')) || {};
-      row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
-    }
-  } else {
-    if (typeof patch.exactLocation !== 'undefined')
-      row.children[1].textContent = patch.exactLocation || 'N/A';
-    if (typeof patch.emergencyType !== 'undefined')
-      row.children[2].textContent = patch.emergencyType || 'N/A';
-    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-      const r = JSON.parse(row.getAttribute('data-report')) || {};
-      row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
-    }
-  }
+                // update data-report payload
+                row.setAttribute('data-report', JSON.stringify(arr[i] || patch));
 
-  // optional: re-sort if your ordering depends on date/time
-  // if (typeof patch.status !== 'undefined' || typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-  //   renderSortedReports(arr, reportType);
-  // }
-}
+                // update status cell if status changed
+                if (typeof patch.status !== 'undefined') {
+                    const statusCell = row.querySelector('.status');
+                    if (statusCell) {
+                    statusCell.textContent = patch.status;
+                    // reset color classes
+                    statusCell.classList.remove(
+                        'text-red-500','text-green-500','text-orange-500','text-blue-500','text-yellow-500'
+                    );
+                    const color =
+                        patch.status === 'Ongoing'   ? 'red'    :
+                        patch.status === 'Completed' ? 'green'  :
+                        patch.status === 'Pending'   ? 'orange' :
+                        patch.status === 'Received'  ? 'blue'   : 'yellow';
+                    statusCell.classList.add(`text-${color}-500`);
+                    }
+                }
 
-function removeRow(id) {
-  const el = document.getElementById(`reportRow${id}`);
-  if (el && el.parentNode) el.parentNode.removeChild(el);
-}
+                // update other visible cells if relevant fields changed
+                if (reportType === 'fireReports') {
+                    if (typeof patch.exactLocation !== 'undefined')
+                    row.children[1].textContent = patch.exactLocation || 'N/A';
+                    if (typeof patch.alertLevel !== 'undefined')
+                    row.children[2].textContent = patch.alertLevel || 'Unknown';
+                    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+                    const r = JSON.parse(row.getAttribute('data-report')) || {};
+                    row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
+                    }
+                } else {
+                    if (typeof patch.exactLocation !== 'undefined')
+                    row.children[1].textContent = patch.exactLocation || 'N/A';
+                    if (typeof patch.emergencyType !== 'undefined')
+                    row.children[2].textContent = patch.emergencyType || 'N/A';
+                    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+                    const r = JSON.parse(row.getAttribute('data-report')) || {};
+                    row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
+                    }
+                }
+
+                if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+                const r = JSON.parse(row.getAttribute('data-report')) || {};
+                row.children[3].textContent = `${r.date || 'N/A'} ${to24h(r.reportTime) || 'N/A'}`;
+                }
+
+
+                // optional: re-sort if your ordering depends on date/time
+                // if (typeof patch.status !== 'undefined' || typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+                //   renderSortedReports(arr, reportType);
+                // }
+                }
+
+                function removeRow(id) {
+                const el = document.getElementById(`reportRow${id}`);
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+                }
 
 
 
@@ -683,15 +721,21 @@ function removeRow(id) {
                 tableBody.style.visibility = 'visible';
                 }
 
+
                 // ==================================================
                 // Filters
                 // ==================================================
                 function filterFireReportTable() {
-                const levelFilter = document.getElementById('fireLevelFilter').value.toLowerCase();
-                const statusFilter = document.getElementById('fireStatusFilter').value.toLowerCase();
-                const locationSearch = document.getElementById('fireLocationSearch').value.toLowerCase();
-                const dateSearch = document.getElementById('fireDateSearch').value;
-                const timeSearch = document.getElementById('fireTimeSearch').value;
+                 const levelFilter = document.getElementById('fireLevelFilter').value.toLowerCase();
+                    const statusFilter = document.getElementById('fireStatusFilter').value.toLowerCase();
+                    const locationSearch = document.getElementById('fireLocationSearch').value.toLowerCase();
+
+
+                const mode = document.getElementById('fireDateTimeFilter').value;
+                const dateSearch = mode === 'date' ? document.getElementById('fireDateSearch').value : '';
+                const timeSearch = mode === 'time' ? document.getElementById('fireTimeSearch').value : '';
+
+
                 const rows = document.querySelectorAll('#fireReportsBody tr');
 
                 rows.forEach(row => {
@@ -701,45 +745,106 @@ function removeRow(id) {
 
                     const location = report.exactLocation ? report.exactLocation.toLowerCase() : '';
                     const matchesLocation = !locationSearch || location.includes(locationSearch);
-
-                    const reportDateISO = (() => {
-                    if (!report.date) return '';
-                    const parts = report.date.split('/');
-                    if (parts.length === 3) {
-                        return `${parts[2].length === 2 ? '20'+parts[2] : parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                    }
-                    return '';
-                    })();
+                    const reportDateISO = dateToISO(report.date || '');
                     const matchesDate = !dateSearch || (reportDateISO === dateSearch);
 
-                    const matchesTime = (() => {
+
+                   const matchesTime = (() => {
                     if (!timeSearch) return true;
-                    if (!report.reportTime) return false;
-                    let time = report.reportTime.trim();
-                    const m = time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
-                    if (!m) return false;
-                    let hour = parseInt(m[1],10);
-                    const min = m[2];
-                    const ampm = m[3];
-                    if (ampm) {
-                        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
-                        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-                    }
-                    const t24 = `${hour.toString().padStart(2,'0')}:${min}`;
-                    return t24 === timeSearch;
+                    const t = to24h(report.reportTime || '');
+                    return !!t && t === timeSearch;
                     })();
 
                     row.style.display = (matchesLevel && matchesStatus && matchesLocation && matchesDate && matchesTime) ? '' : 'none';
                 });
                 }
 
+           function handleDateTimeFilterChange() {
+  const mode = document.getElementById('fireDateTimeFilter').value;
+  const d = document.getElementById('fireDateSearch');
+  const t = document.getElementById('fireTimeSearch');
+  if (mode === 'date') {
+    d.classList.remove('hidden'); t.classList.add('hidden');
+  } else if (mode === 'time') {
+    t.classList.remove('hidden'); d.classList.add('hidden');
+  } else {
+    d.classList.add('hidden'); t.classList.add('hidden');
+    d.value = ''; t.value = '';            // clear stale values
+  }
+  filterFireReportTable();                 // always re-evaluate
+}
+
+function handleOtherDateTimeFilterChange() {
+  const mode = document.getElementById('otherDateTimeFilter').value;
+  const d = document.getElementById('otherDateSearch');
+  const t = document.getElementById('otherTimeSearch');
+  if (mode === 'date') {
+    d.classList.remove('hidden'); t.classList.add('hidden');
+  } else if (mode === 'time') {
+    t.classList.remove('hidden'); d.classList.add('hidden');
+  } else {
+    d.classList.add('hidden'); t.classList.add('hidden');
+    d.value = ''; t.value = '';            // clear stale values
+  }
+  filterOtherEmergencyTable();             // always re-evaluate
+}
+
+
+                function focusFireDatePicker() {
+                const sel = document.getElementById('fireDateTimeFilter');
+                if (sel) sel.value = 'date';
+                handleDateTimeFilterChange();
+                const input = document.getElementById('fireDateSearch');
+                if (!input) return;
+                input.classList.remove('hidden');
+                if (typeof input.showPicker === 'function') input.showPicker();
+                input.focus();
+                }
+
+                function focusOtherDatePicker() {
+                const sel = document.getElementById('otherDateTimeFilter');
+                if (sel) sel.value = 'date';
+                handleOtherDateTimeFilterChange();
+                const input = document.getElementById('otherDateSearch');
+                if (!input) return;
+                input.classList.remove('hidden');
+                if (typeof input.showPicker === 'function') input.showPicker();
+                input.focus();
+                }
+
+                function normalizeInitialTimes() {
+                // Fire rows
+                document.querySelectorAll('#fireReportsBody tr').forEach(row => {
+                    const report = JSON.parse(row.getAttribute('data-report') || '{}');
+                    if (report.reportTime) {
+                    // Cell index 3 contains "date time"
+                    const d = report.date || 'N/A';
+                    const t = to24h(report.reportTime) || 'N/A';
+                    row.children[3].textContent = `${d} ${t}`;
+                    }
+                });
+                // Other Emergency rows
+                document.querySelectorAll('#otherEmergencyTableBody tr').forEach(row => {
+                    const report = JSON.parse(row.getAttribute('data-report') || '{}');
+                    if (report.reportTime) {
+                    const d = report.date || 'N/A';
+                    const t = to24h(report.reportTime) || 'N/A';
+                    row.children[3].textContent = `${d} ${t}`;
+                    }
+                });
+                }
+
+
+
                 function filterOtherEmergencyTable() {
-                const typeFilter = document.getElementById('emergencyTypeFilter').value.toLowerCase();
-                const statusFilter = document.getElementById('otherStatusFilter').value.toLowerCase();
-                const locationSearch = document.getElementById('otherLocationSearch').value.toLowerCase();
-                const dateSearch = document.getElementById('otherDateSearch').value;
-                const timeSearch = document.getElementById('otherTimeSearch').value;
-                const rows = document.querySelectorAll('#otherEmergencyTableBody tr');
+                  const typeFilter = document.getElementById('emergencyTypeFilter').value.toLowerCase();
+                    const statusFilter = document.getElementById('otherStatusFilter').value.toLowerCase();
+                    const locationSearch = document.getElementById('otherLocationSearch').value.toLowerCase();
+
+                    const mode = document.getElementById('otherDateTimeFilter').value;
+                    const dateSearch = mode === 'date' ? document.getElementById('otherDateSearch').value : '';
+                    const timeSearch = mode === 'time' ? document.getElementById('otherTimeSearch').value : '';
+                    const rows = document.querySelectorAll('#otherEmergencyTableBody tr');
 
                 rows.forEach(row => {
                     const report = JSON.parse(row.getAttribute('data-report'));
@@ -759,22 +864,12 @@ function removeRow(id) {
                     })();
                     const matchesDate = !dateSearch || (reportDateISO === dateSearch);
 
-                    const matchesTime = (() => {
+                   const matchesTime = (() => {
                     if (!timeSearch) return true;
-                    if (!report.reportTime) return false;
-                    let time = report.reportTime.trim();
-                    const m = time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
-                    if (!m) return false;
-                    let hour = parseInt(m[1],10);
-                    const min = m[2];
-                    const ampm = m[3];
-                    if (ampm) {
-                        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
-                        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-                    }
-                    const t24 = `${hour.toString().padStart(2,'0')}:${min}`;
-                    return t24 === timeSearch;
+                    const t = to24h(report.reportTime || '');
+                    return !!t && t === timeSearch;
                     })();
+
 
                     row.style.display = (matchesType && matchesStatus && matchesLocation && matchesDate && matchesTime) ? '' : 'none';
                 });
@@ -816,7 +911,7 @@ function removeRow(id) {
                     document.getElementById('detailStatus').innerText = report.status || 'N/A';
                     document.getElementById('detailLocation').innerText = report.exactLocation || 'N/A';
                     document.getElementById('detailDate').innerText = report.date || 'N/A';
-                    document.getElementById('detailReportTime').innerText = report.reportTime || 'N/A';
+                    document.getElementById('detailReportTime').innerText = to24h(report.reportTime) || 'N/A';
                     document.getElementById('fireReportDetails').classList.remove('hidden');
                     document.getElementById('otherEmergencyDetails').classList.add('hidden');
                 } else if (reportType === 'otherEmergency') {
@@ -826,7 +921,7 @@ function removeRow(id) {
                     document.getElementById('detailEmergencyType').innerText = report.emergencyType || 'N/A';
                     document.getElementById('detailLocationOther').innerText = report.exactLocation || 'N/A';
                     document.getElementById('detailDateOther').innerText = report.date || 'N/A';
-                    document.getElementById('detailReportTimeOther').innerText = report.reportTime || 'N/A';
+                   document.getElementById('detailReportTimeOther').innerText = to24h(report.reportTime) || 'N/A';
                     document.getElementById('fireReportDetails').classList.add('hidden');
                     document.getElementById('otherEmergencyDetails').classList.remove('hidden');
                 }
