@@ -152,7 +152,7 @@
 
     <!-- 🎥 Video Background -->
     <video autoplay muted loop playsinline class="video-bg">
-        <source src="{{ asset('background.mp4') }}" type="video/mp4">
+        <source src="{{ asset('videos/background.mp4') }}" type="video/mp4">
         Your browser does not support the video tag.
     </video>
 
