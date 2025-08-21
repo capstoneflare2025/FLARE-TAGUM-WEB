@@ -25,7 +25,7 @@
             background: #f4f4f4;
             overflow: hidden; /* prevent scrollbars from video */
         }
-        /* 🔥 Video Background */
+        /* 🎥 Video Background */
         .video-bg {
             position: fixed;
             top: 0;
@@ -33,7 +33,19 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            z-index: -1; /* stay behind all content */
+            z-index: -2; /* stay behind everything */
+            filter: blur(6px); /* blur effect */
+            transform: scale(1.1); /* zoom slightly so blur edges don’t show */
+        }
+        /* 🔴 Transparent Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(224, 0, 36, 0.4); /* red tint with transparency */
+            z-index: -1;
         }
         .container {
             position: relative;
@@ -146,6 +158,9 @@
         <source src="{{ asset('videos/background.mp4') }}" type="video/mp4">
         Your browser does not support the video tag.
     </video>
+
+    <!-- 🔴 Transparent Overlay -->
+    <div class="overlay"></div>
 
     <div class="container">
         <div class="welcome-box">
