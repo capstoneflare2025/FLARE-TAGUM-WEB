@@ -70,9 +70,9 @@
         }
         /* ✅ Logo styling */
         .welcome-box .logo {
-            width: 200px; /* adjust size like screenshot */
+            width: 600px; 
             height: auto;
-            margin-bottom: 15px; /* space above WELCOME! */
+            margin-bottom: 15px; 
         }
         .welcome-box h2 {
             margin-bottom: 10px;
