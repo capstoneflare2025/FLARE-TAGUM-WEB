@@ -172,7 +172,7 @@
         <div class="welcome-box">
             <!-- ✅ Logo above welcome -->
             <img src="{{ asset('images/flabfp.png') }}" alt="Logo" class="logo">
-            <h2>WELCOME!</h2>
+            <h2>ADMIN DASHBOARD</h2>
         </div>
         <div class="login-box">
             <h3 class="login">Login please</h3>
