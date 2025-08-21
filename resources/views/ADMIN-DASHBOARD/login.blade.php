@@ -11,152 +11,100 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css" rel="stylesheet">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: #f4f4f4;
-            overflow: hidden; /* prevent scrollbars from video */
-        }
-        /* 🎥 Video Background */
-        .video-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -2; 
-            filter: blur(4px); 
-            transform: scale(1.1); 
-        }
-       /* ⚫ Transparent Black Overlay */
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6); /* black tint with 60% opacity */
-            z-index: -1;
-        }
-        .container {
-            position: relative;
-            width: 500px;
-            height: 550px;
-            display: flex;
-            margin-left: 400px;
-            align-items: center;
-        }
-        .welcome-box {
-            width: 100%;
-            height: 100%;
-            background: #E00024;
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-        /* ✅ Logo styling */
-        .welcome-box .logo {
-            width: 600px; 
-            height: auto;
-            margin-bottom: 15px; 
-        }
-        .welcome-box h2 {
-            margin-bottom: 10px;
-            font-size: 24px;
-        }
-        .welcome-box p {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 20px;
-        }
-        .login-box {
-            position: absolute;
-            background: #FFFFFF;
-            width: 400px;
-            height: 470px;
-            padding: 35px;
-            margin-left: -380px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            left: 30px;
-        }
-        .login-box h3 {
-            text-align: center;
-            margin-bottom: 50px;
-            color: #E00024;
-        }
-        .input-group {
-            display: flex;
-            background: #F1F1F1;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-            height: 50px;
-            margin-bottom: 20px;
-            align-items: center;
-        }
-        .input-group i {
-            margin-right: 10px;
-            color: gray;
-        }
-        .input-group input {
-            border: none;
-            outline: none;
-            background: transparent;
-            flex: 1;
-            font-size: 14px;
-        }
-        .login-btn {
-            width: 50%;
-            background: #E00024;
-            color: white;
-            border: none;
-            padding: 10px;
-            margin-left: 80px;
-            margin-top: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 10px;
-        }
-        .login-btn:hover {
-            background: #E87F2E;
-        }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif}
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f4f4f4;
+    overflow:hidden;
+  }
 
-        button.toggle-password {
-            background: transparent;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-        }
-        .register-btn {
-            width: 50%;
-            background: #0A1F7C;
-            color: white;
-            border: none;
-            padding: 10px;
-            margin-top: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 10px;
-        }
-        .register-btn:hover {
-            background: #00A9FF;
-        }
-    </style>
+  .video-bg{
+    position:fixed;inset:0;width:100%;height:100%;
+    object-fit:cover;z-index:-2;filter:blur(4px);transform:scale(1.1);
+  }
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:-1;
+  }
+
+  /* Layout */
+  .container{
+    width:100%;
+    max-width:1100px;
+    padding:16px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+
+  .welcome-box,
+  .login-box{
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.18);
+  }
+
+  /* Welcome panel */
+  .welcome-box{
+    background:#E00024;
+    color:#fff;
+    padding:24px;
+    text-align:center;
+  }
+  .welcome-box .logo{
+    width:100%;
+    max-width:360px;       /* scales on mobile */
+    height:auto;
+    margin:0 auto 12px;
+    display:block;
+  }
+  .welcome-box h2{font-size:clamp(18px,3.5vw,28px);}
+
+  /* Login panel */
+  .login-box{
+    padding:28px 22px;
+  }
+  .login-box h3{
+    text-align:center;margin-bottom:20px;color:#E00024;
+    font-size:clamp(18px,4vw,24px);
+  }
+  .input-group{
+    display:flex;align-items:center;
+    background:#F1F1F1;border-radius:8px;
+    padding:10px 12px;margin-top:14px;
+  }
+  .input-group i{margin-right:10px;color:gray}
+  .input-group input{
+    border:none;outline:none;background:transparent;flex:1;font-size:16px;
+  }
+  button.toggle-password{background:transparent;border:0;cursor:pointer}
+
+  .login-btn,.register-btn{
+    width:100%;max-width:320px;
+    display:block;margin:18px auto 0;
+    background:#E00024;color:#fff;border:0;border-radius:10px;padding:12px;
+    font-weight:bold;cursor:pointer;
+  }
+  .login-btn:hover{background:#E87F2E}
+  .register-btn{background:#0A1F7C}.register-btn:hover{background:#00A9FF}
+
+  /* ≥768px: two columns, equal height */
+  @media (min-width:768px){
+    .container{
+      grid-template-columns:1fr 1fr;
+      align-items:stretch;
+    }
+    .welcome-box,.login-box{height:auto}
+  }
+
+  /* ≥1024px: tighten max width */
+  @media (min-width:1024px){
+    .container{max-width:1000px}
+  }
+</style>
+
 </head>
 <body>
     <!-- 🎥 Video Background -->
