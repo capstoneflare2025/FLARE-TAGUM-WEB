@@ -70,7 +70,7 @@
         }
         /* ✅ Logo styling */
         .welcome-box .logo {
-            width: 120px; /* adjust size like screenshot */
+            width: 200px; /* adjust size like screenshot */
             height: auto;
             margin-bottom: 15px; /* space above WELCOME! */
         }
