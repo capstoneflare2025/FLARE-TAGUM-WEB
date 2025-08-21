@@ -4,10 +4,10 @@
 
     <h2 id="station-name"></h2>
 
-    <!-- Dashboard Link (Active when on the dashboard route) -->
+    {{-- <!-- Dashboard Link (Active when on the dashboard route) -->
     <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
         <img src="{{ asset('images/dashboard.png')}}" alt="Dashboard">Dashboard
-    </a>
+    </a> --}}
 
     <a href="{{ route('incident-reports') }}" class="{{ request()->routeIs('incident-reports') ? 'active' : '' }}">
         <img src="{{ asset('images/report.png')}}" alt="Incident Reports">Incident Reports
@@ -30,10 +30,7 @@
     <a onclick="openLogoutConfirmation(event)" class="menu-item">
         <img src="{{ asset('images/logout.png')}}" alt="Logout">Logout
     </a>
-
-
 </div>
-
 
 <!-- Modal for Logout Confirmation -->
 <div id="logoutModal" class="modal" style="display: none;">
