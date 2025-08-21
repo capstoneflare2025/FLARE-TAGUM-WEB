@@ -21,7 +21,7 @@ Route::get('/fetch-fire-reports', [IncidentReportsController::class, 'fetchFireR
 
 // Admin routes
 Route::prefix('app')->middleware('firebase.auth')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    // Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/fire-fighters', [AdminController::class, 'fireFighters'])->name('fire-fighters');
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     Route::get('/sms-reports', [SmsReportController::class, 'index'])->name('sms-reports');

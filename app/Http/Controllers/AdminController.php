@@ -8,12 +8,12 @@ use Illuminate\Support\Arr;
 class AdminController extends Controller
 {
     // Method to load the dashboard page
- public function dashboard()
-{
+//  public function dashboard()
+// {
 
 
-    return view('ADMIN-DASHBOARD.dashboard');
-}
+//     return view('ADMIN-DASHBOARD.dashboard');
+// }
 
 
       public function fireFighters()

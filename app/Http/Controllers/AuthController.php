@@ -87,7 +87,7 @@ class AuthController extends Controller
         Log::info('Session data after login', ['session' => session()->all()]);
 
         // Redirect to dashboard
-        return redirect()->route('dashboard');
+        return redirect()->route('incident-reports');
 
     } catch (\Throwable $e) {
         Log::error('Login failed', ['error' => $e->getMessage()]);
