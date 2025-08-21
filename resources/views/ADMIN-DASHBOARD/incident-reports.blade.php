@@ -467,168 +467,133 @@
                 firefighters: `${p}FireStation/${p}FireFighters`
             };
             }
-// ==================================================
-// Real-time Listeners
-// ==================================================
-function initializeRealTimeListener() {
-  const n = nodes();
-  if (!n) {
-    console.error("No station prefix resolved from session email.");
-    return;
-  }
 
-  // Initial full loads
-  loadExistingReports(n.fireReport, 'fireReports');
-  loadExistingReports(n.otherEmergency, 'otherEmergency');
 
-  // Live updates: listen to every child added (no limitToLast)
-  firebase.database().ref(n.fireReport).on('child_added', (snapshot) => {
-    const newReport = snapshot.val();
-    const newReportId = snapshot.key;
-    if (!newReport) return;
-    if (document.getElementById(`reportRow${newReportId}`)) return;
-    newReport.id = newReportId;
-    insertNewReportRow(newReport, 'fireReports');
-  });
+            // ==================================================
+            // Real-time Listeners
+            // ==================================================
+            function initializeRealTimeListener() {
+            const n = nodes();
+            if (!n) {
+                console.error("No station prefix resolved from session email.");
+                return;
+            }
 
-  firebase.database().ref(n.otherEmergency).on('child_added', (snapshot) => {
-    const r = snapshot.val();
-    if (!r) return;
-    r.id = snapshot.key;
-    if (!document.getElementById(`reportRow${r.id}`)) insertNewReportRow(r, 'otherEmergency');
-  });
-}
+            // Fire reports
+            firebase.database().ref(n.fireReport).limitToLast(1).on('child_added', (snapshot) => {
+                const newReport = snapshot.val();
+                const newReportId = snapshot.key;
+                if (!newReport) return;
+                if (document.getElementById(`reportRow${newReportId}`)) return;
+                newReport.id = newReportId;
+                insertNewReportRow(newReport, 'fireReports');
+            });
 
-function loadExistingReports(path, reportType) {
-  firebase.database().ref(path).once('value').then(snap => {
-    const data = snap.val() || {};
-    const list = Object.entries(data).map(([id, r]) => ({ id, ...(r || {}) }));
-    if (!list.length) return;
-    list.forEach(r => {
-      if (!document.getElementById(`reportRow${r.id}`)) insertNewReportRow(r, reportType);
-    });
-  }).catch(console.error);
-}
+            // Mirror if you want real-time for other emergencies too
+            firebase.database().ref(n.otherEmergency).limitToLast(1).on('child_added', (snapshot) => {
+            const r = snapshot.val();
+            if (!r) return;
+            r.id = snapshot.key;
+            if (!document.getElementById(`reportRow${r.id}`)) insertNewReportRow(r, 'otherEmergency');
+            });
+            }
 
-// ==================================================
-// Report Table Rendering
-// ==================================================
-function insertNewReportRow(report, reportType) {
-  const tableBodyId = reportType === 'fireReports' ? 'fireReportsBody' : 'otherEmergencyTableBody';
-  const tableBody = document.getElementById(tableBodyId);
-  if (!tableBody) return;
-  if (document.getElementById(`reportRow${report.id}`)) return;
 
-  function parseDateTime(dateStr, timeStr) {
-    // Prefer explicit timestamp if present
-    if ((!dateStr || !timeStr) && report.timestamp) return new Date(report.timestamp);
-    if (!dateStr || !timeStr) return new Date(0);
+            // ==================================================
+            // Report Table Rendering
+            // ==================================================
+            function insertNewReportRow(report, reportType) {
+            const tableBodyId = reportType === 'fireReports' ? 'fireReportsBody' : 'otherEmergencyTableBody';
+            const tableBody = document.getElementById(tableBodyId);
+            if (!tableBody) return;
+            if (document.getElementById(`reportRow${report.id}`)) return;
 
-    const dateText = String(dateStr).trim();
-    const timeText = String(timeStr).trim();
+            report.date = report.date || new Date().toLocaleDateString();
+            report.reportTime = report.reportTime || new Date().toLocaleTimeString();
 
-    const partsSlash = dateText.includes('/') ? dateText.split('/') : null;
-    const partsDash  = !partsSlash && dateText.includes('-') ? dateText.split('-') : null;
+            function parseDateTime(dateStr, timeStr) {
+                const [day, month, year] = dateStr.split('/');
+                const normalizedYear = year && year.length === 2 ? '20' + year : year;
+                return new Date(`${normalizedYear}-${month}-${day}T${timeStr}`);
+            }
 
-    if (partsSlash && partsSlash.length === 3) {
-      let [d, m, y] = partsSlash;
-      y = y.length === 2 ? `20${y}` : y;
-      return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${timeText}`);
-    }
-    if (partsDash && partsDash.length === 3) {
-      // assume Y-m-d
-      const [y, m, d] = partsDash;
-      return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${timeText}`);
-    }
-    return new Date(0);
-  }
+            if (reportType === 'fireReports') {
+                fireReports.unshift(report);
+                fireReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
+                renderSortedReports(fireReports, 'fireReports', report.id);
+            } else {
+                otherEmergencyReports.unshift(report);
+                otherEmergencyReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
+                renderSortedReports(otherEmergencyReports, 'otherEmergency', report.id);
+            }
+            }
 
-  if (reportType === 'fireReports') {
-    fireReports.unshift(report);
-    fireReports.sort((a, b) => {
-      const tb = parseDateTime(b.date, b.reportTime);
-      const ta = parseDateTime(a.date, a.reportTime);
-      return tb - ta;
-    });
-    renderSortedReports(fireReports, 'fireReports', report.id);
-  } else {
-    otherEmergencyReports.unshift(report);
-    otherEmergencyReports.sort((a, b) => {
-      const tb = parseDateTime(b.date, b.reportTime);
-      const ta = parseDateTime(a.date, a.reportTime);
-      return tb - ta;
-    });
-    renderSortedReports(otherEmergencyReports, 'otherEmergency', report.id);
-  }
-}
+            function renderSortedReports(reportsArray, reportType, highlightId = null) {
+            const tableBodyId = reportType === 'fireReports' ? 'fireReportsBody' : 'otherEmergencyTableBody';
+            const tableBody = document.getElementById(tableBodyId);
+            if (!tableBody) return;
 
-function renderSortedReports(reportsArray, reportType, highlightId = null) {
-  const tableBodyId = reportType === 'fireReports' ? 'fireReportsBody' : 'otherEmergencyTableBody';
-  const tableBody = document.getElementById(tableBodyId);
-  if (!tableBody) return;
+            tableBody.style.visibility = 'hidden';
+            const fragment = document.createDocumentFragment();
 
-  tableBody.style.visibility = 'hidden';
-  const fragment = document.createDocumentFragment();
+            reportsArray.forEach((report, index) => {
+                const rowId = `reportRow${report.id}`;
+                const statusColor = report.status === 'Ongoing' ? 'red' :
+                                    report.status === 'Completed' ? 'green' :
+                                    report.status === 'Pending' ? 'orange' :
+                                    report.status === 'Received' ? 'blue' : 'yellow';
 
-  reportsArray.forEach((report, index) => {
-    const rowId = `reportRow${report.id}`;
-    const statusColor = report.status === 'Ongoing' ? 'red' :
-                        report.status === 'Completed' ? 'green' :
-                        report.status === 'Pending' ? 'orange' :
-                        report.status === 'Received' ? 'blue' : 'yellow';
+                const row = document.createElement('tr');
+                row.id = rowId;
+                row.className = 'border-b';
+                row.classList.toggle('bg-yellow-100', !!(highlightId && report.id === highlightId));
+                row.setAttribute('data-report', JSON.stringify(report));
+                row.setAttribute('data-type', reportType);
 
-    const row = document.createElement('tr');
-    row.id = rowId;
-    row.className = 'border-b';
-    row.classList.toggle('bg-yellow-100', !!(highlightId && report.id === highlightId));
-    row.setAttribute('data-report', JSON.stringify(report));
-    row.setAttribute('data-type', reportType);
+                const cells = reportType === 'fireReports'
+                ? `
+                    <td class="px-4 py-2">${index + 1}</td>
+                    <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
+                    <td class="px-4 py-2">${report.alertLevel || 'Unknown'}</td>
+                    <td class="px-4 py-2">${report.date || 'N/A'} ${report.reportTime || 'N/A'}</td>
+                    <td class="px-4 py-2 status text-${statusColor}-500">${report.status || 'Unknown'}</td>
+                    <td class="px-4 py-2 space-x-2 flex items-center">
+                    <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'fireReports')">
+                        <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
+                        <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'fireReports')">
+                        <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                    </a>
+                    </td>`
+                : `
+                    <td class="px-4 py-2">${index + 1}</td>
+                    <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
+                    <td class="px-4 py-2">${report.emergencyType || 'N/A'}</td>
+                    <td class="px-4 py-2">${report.date || 'N/A'} ${report.reportTime || 'N/A'}</td>
+                    <td class="px-4 py-2 status text-${statusColor}-500">${report.status || 'Unknown'}</td>
+                    <td class="px-4 py-2 space-x-2 flex items-center">
+                    <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'otherEmergency')">
+                        <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
+                        <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'otherEmergency')">
+                        <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                    </a>
+                    </td>`;
 
-    const cells = reportType === 'fireReports'
-      ? `
-        <td class="px-4 py-2">${index + 1}</td>
-        <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
-        <td class="px-4 py-2">${report.alertLevel || 'Unknown'}</td>
-        <td class="px-4 py-2">${report.date || 'N/A'} ${report.reportTime || 'N/A'}</td>
-        <td class="px-4 py-2 status text-${statusColor}-500">${report.status || 'Unknown'}</td>
-        <td class="px-4 py-2 space-x-2 flex items-center">
-          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'fireReports')">
-            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-          </a>
-          <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
-            <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-          </a>
-          <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'fireReports')">
-            <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-          </a>
-        </td>`
-      : `
-        <td class="px-4 py-2">${index + 1}</td>
-        <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
-        <td class="px-4 py-2">${report.emergencyType || 'N/A'}</td>
-        <td class="px-4 py-2">${report.date || 'N/A'} ${report.reportTime || 'N/A'}</td>
-        <td class="px-4 py-2 status text-${statusColor}-500">${report.status || 'Unknown'}</td>
-        <td class="px-4 py-2 space-x-2 flex items-center">
-          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'otherEmergency')">
-            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-          </a>
-          <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
-            <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-          </a>
-          <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'otherEmergency')">
-            <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-          </a>
-        </td>`;
+                row.innerHTML = cells;
+                fragment.appendChild(row);
+            });
 
-    row.innerHTML = cells;
-    fragment.appendChild(row);
-  });
-
-  tableBody.innerHTML = '';
-  tableBody.appendChild(fragment);
-  tableBody.style.visibility = 'visible';
-}
-
+            tableBody.innerHTML = '';
+            tableBody.appendChild(fragment);
+            tableBody.style.visibility = 'visible';
+            }
 
             // ==================================================
             // Filters
