@@ -4,6 +4,9 @@
 
 @section('content')
 <div class="container mx-auto p-6 sm:p-8">
+
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">SMS Report Management</h1>
+
     <div class="bg-white p-6 shadow rounded-lg mb-8">
         <h2 class="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">SMS Reports</h2>
         <div class="overflow-x-auto">
