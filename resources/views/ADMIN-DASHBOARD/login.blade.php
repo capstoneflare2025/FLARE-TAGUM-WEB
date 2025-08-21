@@ -68,10 +68,11 @@
             text-align: center;
             padding: 20px;
         }
+        /* ✅ Logo styling */
         .welcome-box .logo {
-            width: 120px; /* adjust size */
+            width: 120px; /* adjust size like screenshot */
             height: auto;
-            margin-bottom: 15px;
+            margin-bottom: 15px; /* space above WELCOME! */
         }
         .welcome-box h2 {
             margin-bottom: 10px;
@@ -169,8 +170,8 @@
 
     <div class="container">
         <div class="welcome-box">
-            <!-- Logo above welcome -->
-            <img src="images/flabfp.png" alt="Logo" class="logo">
+            <!-- ✅ Logo above welcome -->
+            <img src="{{ asset('images/flabfp.png') }}" alt="Logo" class="logo">
             <h2>WELCOME!</h2>
         </div>
         <div class="login-box">
