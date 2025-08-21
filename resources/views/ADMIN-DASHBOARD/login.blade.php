@@ -170,7 +170,7 @@
     <div class="container">
         <div class="welcome-box">
             <!-- Logo above welcome -->
-            <img src="flabfp.png" alt="Logo" class="logo">
+            <img src="images/flabfp.png" alt="Logo" class="logo">
             <h2>WELCOME!</h2>
         </div>
         <div class="login-box">
