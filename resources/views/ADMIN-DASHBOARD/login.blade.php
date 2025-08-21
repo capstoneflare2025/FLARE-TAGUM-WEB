@@ -33,18 +33,18 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            z-index: -2; /* stay behind everything */
-            filter: blur(6px); /* blur effect */
-            transform: scale(1.1); /* zoom slightly so blur edges don’t show */
+            z-index: -2; 
+            filter: blur(4px); 
+            transform: scale(1.1); 
         }
-        /* 🔴 Transparent Overlay */
+       /* ⚫ Transparent Black Overlay */
         .overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(224, 0, 36, 0.4); /* red tint with transparency */
+            background: rgba(0, 0, 0, 0.6); /* black tint with 60% opacity */
             z-index: -1;
         }
         .container {
