@@ -315,30 +315,46 @@
         </tr>
 
         <!-- Filters -->
-        <tr class="bg-gray-50 text-sm">
+                <tr class="bg-gray-50 text-sm">
             <th></th>
             <th class="px-4 py-2">
-            <input id="smsLocationSearch" type="text" placeholder="Search location..."
+                <input id="smsLocationSearch" type="text" placeholder="Search location..."
                     class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                     oninput="filterSmsReportsTable()"/>
             </th>
             <th class="px-4 py-2">
-            <select id="smsDateTimeFilter"
-                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    onchange="handleSmsDateTimeFilterChange()">
+                <select id="smsDateTimeFilter"
+                        class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        onchange="handleSmsDateTimeFilterChange()">
                 <option value="all" selected>All</option>
                 <option value="date">Date</option>
                 <option value="time">Time</option>
-            </select>
-            <input id="smsDateSearch" type="date"
+                </select>
+                <input id="smsDateSearch" type="date"
                     class="hidden w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                     onchange="filterSmsReportsTable()"/>
-            <input id="smsTimeSearch" type="time"
+                <input id="smsTimeSearch" type="time"
                     class="hidden w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                     onchange="filterSmsReportsTable()"/>
             </th>
+
+            <!-- NEW: Status filter -->
+            <th class="px-4 py-2">
+                <select id="smsStatusFilter"
+                        class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        onchange="filterSmsReportsTable()">
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Completed">Completed</option>
+
+                </select>
+            </th>
+
+            <!-- Keep Action column aligned -->
             <th></th>
-        </tr>
+            </tr>
+
         </thead>
 
             <tbody id="smsReportsBody">
@@ -598,15 +614,17 @@
                 // ==================================================
                 // Data Initialization
                 // ==================================================
-                const fireReports = @json($fireReports);
-                const otherEmergencyReports = @json($otherEmergencyReports);
-                  const smsReports = @json($smsReports ?? []);
+              let fireReports = @json($fireReports);
+                let otherEmergencyReports = @json($otherEmergencyReports);
+                let smsReports = @json($smsReports ?? []);
+
 
                 // Globals
                 let currentReport = null;
                 let replyListenerRef = null;
                 let leafletMap = null;
                 let leafletLayersGroup = null;
+                let heardSmsIds = new Set();
 
                 function to24h(t) {
                 if (!t) return '';
@@ -684,52 +702,175 @@
                 // ==================================================
                 // Real-time Listeners
                 // ==================================================
-                function initializeRealTimeListener() {
-                const n = nodes();
-                if (!n) {
-                    console.error("No station prefix resolved from session email.");
-                    return;
-                }
+   function initializeRealTimeListener() {
+  const n = nodes();
+  if (!n) { console.error("No station prefix resolved from session email."); return; }
 
-                // Fire reports
-                firebase.database().ref(n.fireReport).limitToLast(1).on('child_added', (snapshot) => {
-                    const newReport = snapshot.val();
-                    const newReportId = snapshot.key;
-                    if (!newReport) return;
-                    if (document.getElementById(`reportRow${newReportId}`)) return;
-                    newReport.id = newReportId;
-                    insertNewReportRow(newReport, 'fireReports');
-                });
+  // FIRE
+  firebase.database().ref(n.fireReport).on('child_added', (snapshot) => {
+    const r = snapshot.val(); if (!r) return;
+    const id = snapshot.key;
+    if (document.getElementById(`reportRow${id}`)) return;
+    r.id = id;
+    insertNewReportRow(r, 'fireReports');
+    renderAllReports();
+  });
+  firebase.database().ref(n.fireReport).on('child_changed', (snap) => {
+    applyRealtimePatch(snap, 'fireReports');
+    renderAllReports();
+  });
+  firebase.database().ref(n.fireReport).on('child_removed', (snap) => {
+    removeRow(snap.key);
+    const i = (fireReports || []).findIndex(x => x.id === snap.key);
+    if (i !== -1) fireReports.splice(i, 1);
+    renderAllReports();
+  });
 
-                // Mirror if you want real-time for other emergencies too
-                firebase.database().ref(n.otherEmergency).limitToLast(1).on('child_added', (snapshot) => {
-                const r = snapshot.val();
-                if (!r) return;
-                r.id = snapshot.key;
-                if (!document.getElementById(`reportRow${r.id}`)) insertNewReportRow(r, 'otherEmergency');
-                });
+  // OTHER EMERGENCY
+  firebase.database().ref(n.otherEmergency).on('child_added', (snapshot) => {
+    const r = snapshot.val(); if (!r) return;
+    r.id = snapshot.key;
+    if (!document.getElementById(`reportRow${r.id}`)) insertNewReportRow(r, 'otherEmergency');
+    renderAllReports();
+  });
+  firebase.database().ref(n.otherEmergency).on('child_changed', (snap) => {
+    applyRealtimePatch(snap, 'otherEmergency');
+    renderAllReports();
+  });
+  firebase.database().ref(n.otherEmergency).on('child_removed', (snap) => {
+    removeRow(snap.key);
+    const i = (otherEmergencyReports || []).findIndex(x => x.id === snap.key);
+    if (i !== -1) otherEmergencyReports.splice(i, 1);
+    renderAllReports();
+  });
+
+  // SMS (listen on all candidate paths)
+  (n.smsCandidates || []).forEach((path) => {
+    const ref = firebase.database().ref(path);
+
+    ref.on('child_added', (snapshot) => {
+      const r = snapshot.val(); if (!r) return;
+      const id = snapshot.key;
+      if (heardSmsIds.has(id)) return;
+      heardSmsIds.add(id);
+      r.id = id;
+      insertNewSmsRow(r);
+      renderAllReports();
+    });
+
+    ref.on('child_changed', (snap) => {
+      applyRealtimePatchSms(snap);
+      renderSmsReports();   // keep the SMS table fresh too
+      renderAllReports();
+    });
+
+    ref.on('child_removed', (snap) => {
+      removeRow(snap.key);
+      const i = (smsReports || []).findIndex(x => x.id === snap.key);
+      if (i !== -1) smsReports.splice(i, 1);
+      renderAllReports();
+    });
+  });
+}
+
+function applyRealtimePatchSms(snapshot) {
+  const id = snapshot.key;
+  const patch = snapshot.val() || {};
+
+  // update in-memory
+  const i = (smsReports || []).findIndex(r => r.id === id);
+  if (i !== -1) smsReports[i] = { ...smsReports[i], ...patch, id };
+
+  // patch DOM row if present (SMS table)
+  const row = document.getElementById(`reportRow${id}`);
+  if (!row) return;
+
+  row.setAttribute('data-report', JSON.stringify(smsReports[i] || patch));
+
+  // cells: [#, location, dateTime, status, action]
+  if (typeof patch.location !== 'undefined') row.children[1].textContent = patch.location || 'N/A';
+
+  if (typeof patch.date !== 'undefined' || typeof patch.time !== 'undefined') {
+    const r = JSON.parse(row.getAttribute('data-report')) || {};
+    const t = to24h(r.time) || r.time || 'N/A';
+    row.children[2].textContent = `${r.date || 'N/A'} ${t}`;
+  }
+
+  if (typeof patch.status !== 'undefined') {
+    const s = capStatus(patch.status);
+    const statusCell = row.querySelector('.status');
+    if (statusCell) {
+      statusCell.textContent = s;
+      statusCell.classList.remove('text-red-500','text-green-500','text-orange-500','text-blue-500','text-yellow-500','text-black');
+      // SMS table uses colors; "All Reports" rendering already handles black-for-Pending there.
+      const color = statusColor(s);
+      statusCell.classList.add(`text-${color}-500`);
+    }
+  }
+}
 
 
 
-            // NEW: react to updates (e.g., status changes) in real time
-            firebase.database().ref(n.fireReport).on('child_changed', (snap) => {
-                applyRealtimePatch(snap, 'fireReports');
-            });
-            firebase.database().ref(n.otherEmergency).on('child_changed', (snap) => {
-                applyRealtimePatch(snap, 'otherEmergency');
-            });
-
-            // Optional: handle deletions
-            firebase.database().ref(n.fireReport).on('child_removed', (snap) => {
-                removeRow(snap.key);
-            });
-            firebase.database().ref(n.otherEmergency).on('child_removed', (snap) => {
-                removeRow(snap.key);
-            });
-
-                }
 
 
+// 3) AFTER renderSortedReports(...) FUNCTION, ADD:
+function renderSmsReports(highlightId = null) {
+  const body = document.getElementById('smsReportsBody');
+  if (!body) return;
+
+  // sort by merged timestamp
+  const arr = asArray(smsReports).slice();
+  arr.sort((a,b) => parseDT(b.date, b.time, b.timestamp ?? b.createdAt ?? b.updatedAt) -
+                    parseDT(a.date, a.time, a.timestamp ?? a.createdAt ?? a.updatedAt));
+
+  const rows = arr.map((report, index) => {
+    const status = capStatus(report.status || 'Pending');
+    const color  = statusColor(status);
+    const hasLL  = report.latitude != null && report.longitude != null;
+    const dt     = `${report.date || 'N/A'} ${to24h(report.time) || report.time || 'N/A'}`;
+    const locBtn = hasLL
+      ? `<a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
+           <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+         </a>` : '';
+    return `
+      <tr id="reportRow${report.id}" class="border-b ${highlightId && report.id===highlightId ? 'bg-yellow-100' : ''}"
+          data-report='${JSON.stringify(report)}' data-type="smsReports">
+        <td class="px-4 py-2">${index + 1}</td>
+        <td class="px-4 py-2">${report.location || 'N/A'}</td>
+        <td class="px-4 py-2">${dt}</td>
+        <td class="px-4 py-2 status text-${color}-500">${status}</td>
+        <td class="px-4 py-2 space-x-2 flex items-center">
+          ${locBtn}
+          <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'smsReports')">
+            <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+          </a>
+        </td>
+      </tr>`;
+  }).join('');
+
+  body.innerHTML = rows;
+}
+
+
+
+
+// 4) AFTER insertNewReportRow(...) FUNCTION, ADD:
+function insertNewSmsRow(report) {
+  // normalize minimal fields used by table/renderers
+  report.date = report.date || new Date().toISOString().slice(0,10);
+  report.time = report.time || new Date().toTimeString().slice(0,5);
+
+  // de-dup by id
+  const idx = (smsReports || []).findIndex(r => r.id === report.id);
+  if (idx === -1) {
+    smsReports.unshift(report);
+  } else {
+    smsReports[idx] = { ...smsReports[idx], ...report };
+  }
+
+  // render sections
+  renderSmsReports(report.id);
+}
 
 
                                 // ==================================================
@@ -833,10 +974,12 @@
                     fireReports.unshift(report);
                     fireReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
                     renderSortedReports(fireReports, 'fireReports', report.id);
+                      renderAllReports();
                 } else {
                     otherEmergencyReports.unshift(report);
                     otherEmergencyReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
                     renderSortedReports(otherEmergencyReports, 'otherEmergency', report.id);
+                      renderAllReports();
                 }
                 }
 
@@ -998,33 +1141,39 @@ function statusColor(s) {
 
 
               // after renderAllReports() sets tbody HTML:
-                function renderAllReports() {
-                const body = document.getElementById('allReportsBody');
-                if (!body) return;
 
-                const rows = buildAllReports();
-                body.innerHTML = rows.map((r, i) => {
-                    const time24 = to24h(r.time) || r.time || 'N/A';
-                    const dateStr = r.date || 'N/A';
-                    const locBtn = (r.lat != null && r.lng != null)
-                    ? `<a href="javascript:void(0);" onclick="openLocationModal(${r.lat}, ${r.lng})"><img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6"></a>`
-                    : '';
-                    const color = statusColor(r.status);
-                    return `<tr class="border-b" data-merged="1" data-type="${r.type}" data-id="${r.id}">
-                    <td class="px-4 py-2">${i + 1}</td>
-                    <td class="px-4 py-2">${r.location}</td>
-                    <td class="px-4 py-2">${dateStr} ${time24}</td>
-                    <td class="px-4 py-2 status text-${color}-500">${r.status}</td>
-                    <td class="px-4 py-2 space-x-2 flex items-center">
-                        ${locBtn}
-                        <a href="javascript:void(0);" onclick="openDetailsModal('${r.id}','${r.type}')"><img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6"></a>
-                    </td>
-                    </tr>`;
-                }).join('');
 
-                if (typeof filterAllReportsTable === 'function') filterAllReportsTable();
-                }
+function renderAllReports() {
+  const body = document.getElementById('allReportsBody');
+  if (!body) return;
 
+  const rows = buildAllReports();
+  body.innerHTML = rows.map((r, i) => {
+    const time24 = to24h(r.time) || r.time || 'N/A';
+    const dateStr = r.date || 'N/A';
+    const locBtn = (r.lat != null && r.lng != null)
+      ? `<a href="javascript:void(0);" onclick="openLocationModal(${r.lat}, ${r.lng})"><img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6"></a>`
+      : '';
+
+    const statusDisp = capStatus(r.status);
+    const colorClass = (r.type === 'smsReports' && statusDisp === 'Pending')
+      ? 'text-black'
+      : `text-${statusColor(statusDisp)}-500`;
+
+    return `<tr class="border-b" data-merged="1" data-type="${r.type}" data-id="${r.id}">
+      <td class="px-4 py-2">${i + 1}</td>
+      <td class="px-4 py-2">${r.location}</td>
+      <td class="px-4 py-2">${dateStr} ${time24}</td>
+      <td class="px-4 py-2 status ${colorClass}">${statusDisp}</td>
+      <td class="px-4 py-2 space-x-2 flex items-center">
+        ${locBtn}
+        <a href="javascript:void(0);" onclick="openDetailsModal('${r.id}','${r.type}')"><img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6"></a>
+      </td>
+    </tr>`;
+  }).join('');
+
+  if (typeof filterAllReportsTable === 'function') filterAllReportsTable();
+}
 
 
 
@@ -1157,37 +1306,43 @@ function handleSmsDateTimeFilterChange() {
 }
 
 function filterSmsReportsTable() {
-  const qLoc = (document.getElementById('smsLocationSearch')?.value || '').toLowerCase();
-  const mode = document.getElementById('smsDateTimeFilter')?.value || 'all';
-  const dateQ = mode === 'date' ? (document.getElementById('smsDateSearch')?.value || '') : '';
-  const timeQ = mode === 'time' ? (document.getElementById('smsTimeSearch')?.value || '') : '';
+  const qLoc   = (document.getElementById('smsLocationSearch')?.value || '').toLowerCase();
+  const mode   = document.getElementById('smsDateTimeFilter')?.value || 'all';
+  const dateQ  = mode === 'date' ? (document.getElementById('smsDateSearch')?.value || '') : '';
+  const timeQ  = mode === 'time' ? (document.getElementById('smsTimeSearch')?.value || '') : '';
+  const statQ  = (document.getElementById('smsStatusFilter')?.value || '').toLowerCase();
 
   const rows = document.querySelectorAll('#smsReportsBody tr');
   rows.forEach(row => {
-    const tds = row.querySelectorAll('td');
-    const loc = (tds[1]?.textContent || '').toLowerCase();
-    const dtText = (tds[2]?.textContent || '').trim().replace(/\s+/g,' ').trim(); // "dd/mm/yyyy HH:MM"
+    const tds    = row.querySelectorAll('td');
+    const loc    = (tds[1]?.textContent || '').toLowerCase();
+    const dtText = (tds[2]?.textContent || '').trim().replace(/\s+/g,' ').trim(); // "yyyy-mm-dd HH:MM[:SS]"
+    const status = (tds[3]?.textContent || '').toLowerCase();
 
+    // date check
     let okDate = true;
     if (dateQ) {
-      const parts = dtText.split(' ');
-      const dmy = parts[0] || '';
-      const iso = dateToISO(dmy);
-      okDate = (iso === dateQ);
+      const d = (dtText.split(' ')[0] || '');
+      // sms date already yyyy-mm-dd from server; compare directly
+      okDate = (d === dateQ);
     }
 
+    // time check
     let okTime = true;
     if (timeQ) {
-      const parts = dtText.split(' ');
-      const rawTime = parts[1] || '';
-      const norm = to24h(rawTime) || rawTime;
-      okTime = (norm === timeQ);
+      const rawTime = (dtText.split(' ')[1] || '');
+      // keep seconds if present; compare prefix HH:MM for robustness
+      okTime = rawTime.startsWith(timeQ);
     }
 
-    const okLoc = !qLoc || loc.includes(qLoc);
-    row.style.display = (okLoc && okDate && okTime) ? '' : 'none';
+    // location + status
+    const okLoc    = !qLoc || loc.includes(qLoc);
+    const okStatus = !statQ || status === statQ;
+
+    row.style.display = (okLoc && okDate && okTime && okStatus) ? '' : 'none';
   });
 }
+
 
 
 
