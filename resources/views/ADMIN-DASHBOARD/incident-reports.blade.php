@@ -1,292 +1,427 @@
-                    @extends('ADMIN-DASHBOARD.app')
+ @extends('ADMIN-DASHBOARD.app')
+ @section('page_name', 'incident-reports')
+ @section('title', 'Incident Reports')
 
-                    @section('page_name', 'incident-reports')
-                    @section('title', 'Incident Reports')
+ @section('content')
 
-                    @section('content')
-                    <div class="container mx-auto p-6">
+    <div class="container mx-auto p-6">
 
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Incident Report Management</h1>
 
-                        <h1 class="text-2xl font-bold text-gray-800 mb-6">Incident Report Management</h1>
-
-
-                            <!-- Toast Notification -->
-                            <div id="toast" style="margin-right: 600px;" class="hidden fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
-                                <span id="toastMessage">Report Accepted</span>
-                                <button id="toastOkButton" class="ml-4 text-white underline">OK</button>
-                            </div>
-
-                        <!-- Combo Box to Choose Incident Type -->
-                        <div class="mb-4 flex gap-2">
-                            <select id="incidentType" class="px-4 py-2 rounded bg-gray-200" onchange="toggleIncidentTables()">
-                                <option value="fireReports">Fire Reports</option>
-                                <option value="otherEmergency">Other Emergency</option>
-                            </select>
-                        </div>
-
-                        <!-- Recent Fire Incidents Table -->
-                    <div id="fireReportsSection" class="bg-white p-6 shadow rounded-lg">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Incident Reports</h2>
-                        <table class="min-w-full table-auto">
-                            <thead>
-                                <!-- Header Row -->
-                                <tr class="bg-gray-100">
-                                    <th class="px-4 py-2 text-left text-gray-600">#</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Location</th>
-                                    {{-- <th class="px-4 py-2 text-left text-gray-600">Level</th> --}}
-                                   <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusFireDatePicker()">Date & Time</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Status</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Action</th>
-                                </tr>
-
-                                <!-- Filter Dropdown Row -->
-                                <tr class="bg-gray-50 text-sm">
-                                    <th></th>
-                                    <th class="px-4 py-2">
-                                        <input
-                                            type="text"
-                                            id="fireLocationSearch"
-                                            placeholder="Search Location..."
-                                            class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            oninput="filterFireReportTable()"
-                                        />
-                                    </th>
-                                    <th class="px-4 py-2">
-                                        <select id="fireLevelFilter"
-                                            class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="filterFireReportTable()">
-                                            <option value="">All</option>
-                                            <option value="1st Alarm">1st Alarm</option>
-                                            <option value="2nd Alarm">2nd Alarm</option>
-                                        </select>
-                                    </th>
-                                    <th class="px-4 py-2">
-                                        <select id="fireDateTimeFilter" class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="handleDateTimeFilterChange()">
-                                            <option value="all" selected>All</option>
-                                            <option value="date">Date</option>
-                                            <option value="time">Time</option>
-                                        </select>
-
-                                        <!-- Hidden inputs: show only when relevant -->
-                                        <input
-                                            type="date"
-                                            id="fireDateSearch"
-                                            class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
-                                            onchange="filterFireReportTable()"
-                                        />
-                                        <input
-                                            type="time"
-                                            id="fireTimeSearch"
-                                            class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
-                                            onchange="filterFireReportTable()"
-                                        />
-                                        </th>
+            <!-- Toast Notification -->
+            <div id="toast" style="margin-right: 600px;" class="hidden fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
+                <span id="toastMessage">Report Accepted</span>
+                    <button id="toastOkButton" class="ml-4 text-white underline">OK</button>
+            </div>
 
 
-                                    <th class="px-4 py-2">
-                                        <select id="fireStatusFilter"
-                                            class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="filterFireReportTable()">
-                                            <option value="">All</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Ongoing">Ongoing</option>
-                                            <option value="Completed">Completed</option>
-                                        </select>
-                                    </th>
+            <select id="incidentType" class="px-4 py-2 rounded bg-gray-200" onchange="toggleIncidentTables()">
+                        <option value="allReports" selected>All Reports</option>
+                        <option value="fireReports">Fire Reports</option>
+                        <option value="otherEmergency">Other Emergency</option>
+                        <option value="smsReports">SMS Reports</option>
+            </select>
+
+    <br>
+    <br>
+
+    <div id="allReportsSection" class="bg-white p-6 shadow rounded-lg">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">All Reports</h2>
+
+        <!-- Filters (below header, same pattern as Fire) -->
+        <div class="max-h-96 overflow-y-auto">
+            <table class="min-w-full table-auto">
+            <thead>
+                <tr class="bg-gray-100">
+                <th class="px-4 py-2 text-left text-gray-600">#</th>
+                <th class="px-4 py-2 text-left text-gray-600">Location</th>
+                <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+                <th class="px-4 py-2 text-left text-gray-600">Status</th>
+                <th class="px-4 py-2 text-left text-gray-600">Action</th>
+                </tr>
+
+                <!-- Filter Row -->
+                <tr class="bg-gray-50 text-sm">
+                <th></th>
+                <th class="px-4 py-2">
+                    <input
+                    type="text"
+                    id="allLocationSearch"
+                    placeholder="Search Location..."
+                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    oninput="filterAllReportsTable()"
+                    />
+                </th>
+                <th class="px-4 py-2">
+                    <select id="allDateTimeFilter"
+                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    onchange="handleAllDateTimeFilterChange()">
+                    <option value="all" selected>All</option>
+                    <option value="date">Date</option>
+                    <option value="time">Time</option>
+                    </select>
+                    <input
+                    type="date"
+                    id="allDateSearch"
+                    class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                    onchange="filterAllReportsTable()"
+                    />
+                    <input
+                    type="time"
+                    id="allTimeSearch"
+                    class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                    onchange="filterAllReportsTable()"
+                    />
+                </th>
+                <th class="px-4 py-2">
+                    <select id="allStatusFilter"
+                    class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    onchange="filterAllReportsTable()">
+                    <option value="">All</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Received">Received</option>
+                    </select>
+                </th>
+                <th></th>
+                </tr>
+            </thead>
+            <tbody id="allReportsBody"></tbody>
+            </table>
+        </div>
+
+    </div>
 
 
-                                    <th></th>
-                                </tr>
 
-                            </thead>
-                            <tbody id="fireReportsBody">
-                                @foreach($fireReports as $index => $report)
-                                    <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="fireReports">
-                                        <td class="px-4 py-2">{{ $index + 1 }}</td>
-                                        <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
-                                        {{-- <td class="px-4 py-2">{{ $report['alertLevel'] ?? 'Unknown' }}</td> --}}
-                                     <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+                       <!-- Recent Fire Incidents Table -->
+    <div id="fireReportsSection" class="bg-white p-6 shadow rounded-lg hidden">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Incident Reports</h2>
+            <div class="max-h-96 overflow-y-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                            <!-- Header Row -->
+                        <tr class="bg-gray-100">
+                            <th class="px-4 py-2 text-left text-gray-600">#</th>
+                            <th class="px-4 py-2 text-left text-gray-600">Location</th>
+                            {{-- <th class="px-4 py-2 text-left text-gray-600">Level</th> --}}
+                            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusFireDatePicker()">Date & Time</th>
+                            <th class="px-4 py-2 text-left text-gray-600">Status</th>
+                            <th class="px-4 py-2 text-left text-gray-600">Action</th>
+                        </tr>
 
-                                        <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
-                                            {{ $report['status'] ?? 'Unknown' }}
-                                        </td>
-                                        <td class="px-4 py-2 space-x-2 flex items-center">
-                                            <a href="javascript:void(0);" onclick="openMessageModal('{{ $report['id'] }}', 'fireReports')">
-                                                <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="openLocationModal({{ $report['latitude'] }}, {{ $report['longitude'] }})">
-                                                <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'fireReports')">
-                                                <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                            <!-- Filter Dropdown Row -->
+                        <tr class="bg-gray-50 text-sm">
+                            <th></th>
+                            <th class="px-4 py-2">
+                                <input
+                                type="text"
+                                id="fireLocationSearch"
+                                placeholder="Search Location..."
+                                class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                                oninput="filterFireReportTable()"
+                                />
+                            </th>
+                            <th class="px-4 py-2">
+                                <select id="fireLevelFilter"
+                                class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                                onchange="filterFireReportTable()">
+                                <option value="">All</option>
+                                <option value="1st Alarm">1st Alarm</option>
+                                <option value="2nd Alarm">2nd Alarm</option>
+                                </select>
+                            </th>
+                            <th class="px-4 py-2">
+                                <select id="fireDateTimeFilter" class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                                onchange="handleDateTimeFilterChange()">
+                                <option value="all" selected>All</option>
+                                <option value="date">Date</option>
+                                <option value="time">Time</option>
+                                </select>
+                                <!-- Hidden inputs: show only when relevant -->
+                                <input
+                                type="date"
+                                id="fireDateSearch"
+                                class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                                onchange="filterFireReportTable()"
+                                />
+                                <input
+                                type="time"
+                                id="fireTimeSearch"
+                                class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                                onchange="filterFireReportTable()"
+                                />
+                            </th>
+                            <th class="px-4 py-2">
+                                <select id="fireStatusFilter"
+                                class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                                onchange="filterFireReportTable()">
+                                <option value="">All</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Ongoing">Ongoing</option>
+                                <option value="Completed">Completed</option>
+                                </select>
+                            </th>
+                            <th></th>
+                        </tr>
+
+                    </thead>
+
+                        <tbody id="fireReportsBody">
+                            @foreach($fireReports as $index => $report)
+                            <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="fireReports">
+                                <td class="px-4 py-2">{{ $index + 1 }}</td>
+                                <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
+                                {{-- <td class="px-4 py-2">{{ $report['alertLevel'] ?? 'Unknown' }}</td> --}}
+                                <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+                                <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
+                                {{ $report['status'] ?? 'Unknown' }}
+                                </td>
+                                <td class="px-4 py-2 space-x-2 flex items-center">
+                                <a href="javascript:void(0);" onclick="openMessageModal('{{ $report['id'] }}', 'fireReports')">
+                                    <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+                                </a>
+                                <a href="javascript:void(0);" onclick="openLocationModal({{ $report['latitude'] }}, {{ $report['longitude'] }})">
+                                    <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                                </a>
+                                <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'fireReports')">
+                                    <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                                </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                </table>
+            </div>
+    </div>
+
+            <!-- Spinner for loading Other Emergency Incidents -->
+            <div id="spinner" class="hidden flex justify-center items-center mt-6">
+                <div class="spinner-border animate-spin inline-block w-12 h-12 border-4 border-solid border-gray-200 border-t-gray-600 rounded-full"></div>
+            </div>
+
+    <!-- Other Emergency Incidents Table -->
+    <div id="otherEmergencySection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Other Emergency Incidents</h2>
+        <div class="max-h-96 overflow-y-auto">
+            <table class="min-w-full table-auto">
+            <thead>
+                <!-- Header Row -->
+                <tr class="bg-gray-100">
+                <th class="px-4 py-2 text-left text-gray-600">#</th>
+                <th class="px-4 py-2 text-left text-gray-600">Location</th>
+                <th class="px-4 py-2 text-left text-gray-600">Emergency Type</th>
+                <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusOtherDatePicker()">Date & Time</th>
+                <th class="px-4 py-2 text-left text-gray-600">Status</th>
+                <th class="px-4 py-2 text-left text-gray-600">Action</th>
+                </tr>
+
+                <!-- Filter Dropdown Row -->
+                <tr class="bg-gray-50 text-sm">
+                <th></th>
+                <th class="px-4 py-2">
+                    <input
+                    type="text"
+                    id="otherLocationSearch"
+                    placeholder="Search Location..."
+                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    oninput="filterOtherEmergencyTable()"
+                    />
+                </th>
+                <th class="px-4 py-2">
+                    <select id="emergencyTypeFilter"
+                    class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    onchange="filterOtherEmergencyTable()">
+                    <option value="">All</option>
+                    <option value="Gas Leak">Gas Leak</option>
+                    <option value="Flooding">Flooding</option>
+                    <option value="Fallen Tree">Fallen Tree</option>
+                    <option value="Building Collapse">Building Collapse</option>
+                    </select>
+                </th>
+                <th class="px-4 py-2">
+                    <select id="otherDateTimeFilter" class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    onchange="handleOtherDateTimeFilterChange()">
+                    <option value="all" selected>All</option>
+                    <option value="date">Date</option>
+                    <option value="time">Time</option>
+                    </select>
+                    <input
+                    type="date"
+                    id="otherDateSearch"
+                    class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                    onchange="filterOtherEmergencyTable()"
+                    />
+                    <input
+                    type="time"
+                    id="otherTimeSearch"
+                    class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
+                    onchange="filterOtherEmergencyTable()"
+                    />
+                </th>
+                <th class="px-4 py-2">
+                    <select id="otherStatusFilter"
+                    class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
+                    onchange="filterOtherEmergencyTable()">
+                    <option value="">All</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Completed">Completed</option>
+                    </select>
+                </th>
+                <th></th>
+                </tr>
+            </thead>
+            <tbody id="otherEmergencyTableBody">
+                @foreach($otherEmergencyReports as $index => $report)
+                <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="otherEmergency">
+                    <td class="px-4 py-2">{{ $index + 1 }}</td>
+                    <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
+                    <td class="px-4 py-2">{{ $report['emergencyType'] ?? 'N/A' }}</td>
+                    <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
+                    <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
+                    {{ $report['status'] ?? 'Unknown' }}
+                    </td>
+                    <td class="px-4 py-2 flex space-x-4">
+                    <a href="javascript:void(0);" onclick="openMessageModal('{{ $report['id'] }}', 'otherEmergency')">
+                        <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openLocationModal({{ $report['latitude'] }}, {{ $report['longitude'] }})">
+                        <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                    </a>
+                    <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'otherEmergency')">
+                        <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                    </a>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- SMS Reports Table (visible only when selector = SMS) -->
+    <div id="smsReportsSection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">SMS Reports</h2>
+        <div class="max-h-96 overflow-y-auto">
+            <table class="min-w-full table-auto">
+            <thead>
+        <tr class="bg-gray-100">
+            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600">Location</th>
+            <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600">Action</th>
+        </tr>
+
+        <!-- Filters -->
+        <tr class="bg-gray-50 text-sm">
+            <th></th>
+            <th class="px-4 py-2">
+            <input id="smsLocationSearch" type="text" placeholder="Search location..."
+                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    oninput="filterSmsReportsTable()"/>
+            </th>
+            <th class="px-4 py-2">
+            <select id="smsDateTimeFilter"
+                    class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onchange="handleSmsDateTimeFilterChange()">
+                <option value="all" selected>All</option>
+                <option value="date">Date</option>
+                <option value="time">Time</option>
+            </select>
+            <input id="smsDateSearch" type="date"
+                    class="hidden w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onchange="filterSmsReportsTable()"/>
+            <input id="smsTimeSearch" type="time"
+                    class="hidden w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onchange="filterSmsReportsTable()"/>
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+
+            <tbody id="smsReportsBody">
+                @foreach(($smsReports ?? []) as $index => $report)
+                <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="smsReports">
+                    <td class="px-4 py-2">{{ $index + 1 }}</td>
+                    <td class="px-4 py-2">{{ $report['location'] ?? 'N/A' }}</td>
+                    <td class="px-4 py-2">
+                    {{ $report['date'] ?? 'N/A' }}
+                    {{ $report['time'] ?? 'N/A' }}
+                    </td>
+                    <td class="px-4 py-2 space-x-2 flex items-center">
+                    @php
+                        $lat = $report['latitude'] ?? null; $lng = $report['longitude'] ?? null;
+                    @endphp
+                    @if(!is_null($lat) && !is_null($lng))
+                        <a href="javascript:void(0);" onclick="openLocationModal({{ $lat }}, {{ $lng }})">
+                        <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                        </a>
+                    @endif
+                    <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'smsReports')">
+                        <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                    </a>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            </table>
+        </div>
+    </div>
+
+
+
+    <!-- Message Modal for Fire Reports -->
+    <div id="fireMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                Fire Incident Chat
+            </h3>
+
+                <!-- Display ID, Name, and Contact -->
+                <div class="mb-4">
+                    <p><strong>Incident ID:</strong> <span id="fireMessageIncidentIdValue"></span></p>
+                    <p><strong>Reporter Name:</strong> <span id="fireMessageNameValue"></span></p>
+                    <p><strong>Contact:</strong> <span id="fireMessageContactValue"></span></p>
+                </div>
+
+                    <!-- Scrollable chat area -->
+                    <div id="fireMessageThread" class="h-64 overflow-y-auto border border-gray-200 p-4 rounded mb-4 bg-gray-50 scroll-smooth">
+                        <!-- Chat messages will be dynamically inserted here -->
                     </div>
 
-
-
-                        <!-- Spinner for loading Other Emergency Incidents -->
-                        <div id="spinner" class="hidden flex justify-center items-center mt-6">
-                            <div class="spinner-border animate-spin inline-block w-12 h-12 border-4 border-solid border-gray-200 border-t-gray-600 rounded-full"></div>
-                        </div>
-
-
-                    <!-- Other Emergency Incidents Table -->
-                    <div id="otherEmergencySection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4">Other Emergency Incidents</h2>
-                        <table class="min-w-full table-auto">
-                            <thead>
-                                <!-- Header Row -->
-                                <tr class="bg-gray-100">
-                                    <th class="px-4 py-2 text-left text-gray-600">#</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Location</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Emergency Type</th>
-                                    <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusOtherDatePicker()">Date & Time</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Status</th>
-                                    <th class="px-4 py-2 text-left text-gray-600">Action</th>
-                                </tr>
-
-                                <!-- Filter Dropdown Row -->
-                                <tr class="bg-gray-50 text-sm">
-                                    <th></th>
-                                    <th class="px-4 py-2">
-                                        <input
-                                            type="text"
-                                            id="otherLocationSearch"
-                                            placeholder="Search Location..."
-                                            class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            oninput="filterOtherEmergencyTable()"
-                                        />
-                                    </th>
-                                    <th class="px-4 py-2">
-                                        <select id="emergencyTypeFilter"
-                                            class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="filterOtherEmergencyTable()">
-                                            <option value="">All</option>
-                                            <option value="Gas Leak">Gas Leak</option>
-                                            <option value="Flooding">Flooding</option>
-                                            <option value="Fallen Tree">Fallen Tree</option>
-                                            <option value="Building Collapse">Building Collapse</option>
-                                        </select>
-                                    </th>
-                                    <th class="px-4 py-2">
-                                        <select id="otherDateTimeFilter" class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="handleOtherDateTimeFilterChange()">
-                                            <option value="all" selected>All</option>
-                                            <option value="date">Date</option>
-                                            <option value="time">Time</option>
-                                        </select>
-                                        <input
-                                            type="date"
-                                            id="otherDateSearch"
-                                            class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
-                                            onchange="filterOtherEmergencyTable()"
-                                        />
-                                        <input
-                                            type="time"
-                                            id="otherTimeSearch"
-                                            class="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm hidden"
-                                            onchange="filterOtherEmergencyTable()"
-                                        />
-                                    </th>
-                                    <th class="px-4 py-2">
-                                        <select id="otherStatusFilter"
-                                            class="w-full px-2 py-1 border border-gray-300 bg-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-                                            onchange="filterOtherEmergencyTable()">
-                                            <option value="">All</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Ongoing">Ongoing</option>
-                                            <option value="Completed">Completed</option>
-                                        </select>
-                                    </th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="otherEmergencyTableBody">
-                                @foreach($otherEmergencyReports as $index => $report)
-                                    <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="otherEmergency">
-                                        <td class="px-4 py-2">{{ $index + 1 }}</td>
-                                        <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
-                                        <td class="px-4 py-2">{{ $report['emergencyType'] ?? 'N/A' }}</td>
-                                  <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
-
-
-                                        <td class="px-4 py-2 status text-{{ $report['status'] === 'Ongoing' ? 'red' : ($report['status'] === 'Completed' ? 'green' : ($report['status'] === 'Pending' ? 'orange' : ($report['status'] === 'Received' ? 'blue' : 'yellow'))) }}-500">
-                                            {{ $report['status'] ?? 'Unknown' }}
-                                        </td>
-                                        <td class="px-4 py-2 flex space-x-4">
-                                            <a href="javascript:void(0);" onclick="openMessageModal('{{ $report['id'] }}', 'otherEmergency')">
-                                                <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="openLocationModal({{ $report['latitude'] }}, {{ $report['longitude'] }})">
-                                                <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'otherEmergency')">
-                                                <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-
-
-                    <!-- Message Modal for Fire Reports -->
-                    <div id="fireMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-                        <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
-                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
-                                Fire Incident Chat
-                            </h3>
-
-                            <!-- Display ID, Name, and Contact -->
-                            <div class="mb-4">
-                                <p><strong>Incident ID:</strong> <span id="fireMessageIncidentIdValue"></span></p>
-                                <p><strong>Reporter Name:</strong> <span id="fireMessageNameValue"></span></p>
-                                <p><strong>Contact:</strong> <span id="fireMessageContactValue"></span></p>
-                            </div>
-
-                            <!-- Scrollable chat area -->
-                            <div id="fireMessageThread" class="h-64 overflow-y-auto border border-gray-200 p-4 rounded mb-4 bg-gray-50 scroll-smooth">
-                                <!-- Chat messages will be dynamically inserted here -->
-                            </div>
-
-                            <!-- Message input -->
-                            <form id="fireMessageForm" class="flex gap-2">
-                                <input type="hidden" id="fireMessageIncidentInput">
-                                <input type="text" id="fireMessageInput" class="flex-1 border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message..." required>
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Send</button>
-                            </form>
+                    <!-- Message input -->
+                    <form id="fireMessageForm" class="flex gap-2">
+                        <input type="hidden" id="fireMessageIncidentInput">
+                        <input type="text" id="fireMessageInput" class="flex-1 border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message..." required>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Send</button>
+                    </form>
                             <button onclick="closeFireMessageModal()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-                        </div>
-                    </div>
+            </div>
+    </div>
 
 
-                    <!-- Message Modal for Other Emergency Reports -->
-                    <div id="otherEmergencyMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-                        <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
-                            <h3 class="text-lg font-semibold mb-4 text-gray-800">Other Emergency Incident Chat <span id="otherEmergencyMessageIncidentId" class="text-sm text-gray-500"></span></h3>
+    <!-- Message Modal for Other Emergency Reports -->
+    <div id="otherEmergencyMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">Other Emergency Incident Chat <span id="otherEmergencyMessageIncidentId" class="text-sm text-gray-500"></span></h3>
 
-                            <!-- Scrollable chat area -->
-                            <div id="otherEmergencyMessageThread" class="h-64 overflow-y-auto border border-gray-200 p-4 rounded mb-4 bg-gray-50 scroll-smooth">
-                                <!-- Chat messages will be dynamically inserted here -->
-                            </div>
+                <!-- Scrollable chat area -->
+                <div id="otherEmergencyMessageThread" class="h-64 overflow-y-auto border border-gray-200 p-4 rounded mb-4 bg-gray-50 scroll-smooth">
+                        <!-- Chat messages will be dynamically inserted here -->
+                </div>
 
-                            <!-- Message input -->
-                            <form id="otherEmergencyMessageForm" class="flex gap-2">
-                                <input type="hidden" id="otherEmergencyMessageIncidentInput">
-                                <input type="text" id="otherEmergencyMessageInput" class="flex-1 border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message...">
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Send</button>
-                            </form>
+                    <!-- Message input -->
+                    <form id="otherEmergencyMessageForm" class="flex gap-2">
+                        <input type="hidden" id="otherEmergencyMessageIncidentInput">
+                            <input type="text" id="otherEmergencyMessageInput" class="flex-1 border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message...">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Send</button>
+                    </form>
                             <button onclick="closeOtherEmergencyMessageModal()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-                        </div>
-                    </div>
+        </div>
+    </div>
 
                     <!-- Location Modal -->
                 <!-- Location Modal -->
@@ -396,10 +531,16 @@
                 // URL Parameter Handling and DOM Ready
                 // ==================================================
                 document.addEventListener("DOMContentLoaded", () => {
+
+                      // Render immediately so All Reports is never empty on first paint
+                safeRenderAllReports();
                 handleUrlParams();
+                safeInitRealtime();        // guarded init
                 initializeRealTimeListener();
+
                 toggleIncidentTables();
                 normalizeInitialTimes();
+                renderAllReports();
                 });
 
                 function handleUrlParams() {
@@ -437,6 +578,7 @@
                 // ==================================================
                 const fireReports = @json($fireReports);
                 const otherEmergencyReports = @json($otherEmergencyReports);
+                  const smsReports = @json($smsReports ?? []);
 
                 // Globals
                 let currentReport = null;
@@ -544,6 +686,8 @@
             });
 
                 }
+
+
 
 
                                 // ==================================================
@@ -721,14 +865,135 @@
                 tableBody.style.visibility = 'visible';
                 }
 
+                            // ============================
+                // All Reports (merge + render)
+                // ============================
+                function parseDT(d, t, fallbackTs) {
+                // Normalize date
+                let isoDate = '';
+                if (!d) {
+                    // use fallback numeric ts if present
+                    return typeof fallbackTs === 'number' ? fallbackTs : 0;
+                }
+                if (d.includes('/')) {
+                    // dd/mm/yyyy or dd/mm/yy
+                    isoDate = dateToISO(d); // your helper already handles this
+                } else {
+                    // assume already ISO-ish (yyyy-mm-dd)
+                    isoDate = d;
+                }
+
+                // Normalize time (supports H:MM, HH:MM, optional :SS and AM/PM)
+                const normTime = to24h(t || '') || (t || '00:00');
+
+                const ts = Date.parse(`${isoDate} ${normTime}`);
+                if (!isNaN(ts)) return ts;
+
+                // Last resort: fallback numeric timestamp if provided
+                return typeof fallbackTs === 'number' ? fallbackTs : 0;
+                }
+
+
+                function asArray(v){ return Array.isArray(v) ? v : (v ? Object.values(v) : []); }
+
+           function buildAllReports() {
+  const fire = asArray(fireReports).map(r => ({
+    id: r.id, type: 'fireReports',
+    location: r.exactLocation || r.location || 'N/A',
+    date: r.date || '', time: r.reportTime || '',
+    status: r.status || 'Unknown',
+    lat: r.latitude, lng: r.longitude,
+    sortTs: parseDT(r.date, r.reportTime, r.timestamp ?? r.createdAt ?? r.updatedAt)
+  }));
+
+  const other = asArray(otherEmergencyReports).map(r => ({
+    id: r.id, type: 'otherEmergency',
+    location: r.exactLocation || r.location || 'N/A',
+    date: r.date || '', time: r.reportTime || '',
+    status: r.status || 'Unknown',
+    lat: r.latitude, lng: r.longitude,
+    sortTs: parseDT(r.date, r.reportTime, r.timestamp ?? r.createdAt ?? r.updatedAt)
+  }));
+
+  const sms = asArray(smsReports).map(r => ({
+    id: r.id, type: 'smsReports',
+    location: r.location || 'N/A',
+    date: r.date || '', time: r.time || '',
+    status: r.status || 'N/A',
+    lat: r.latitude, lng: r.longitude,
+    sortTs: parseDT(r.date, r.time, r.timestamp ?? r.createdAt ?? r.updatedAt)
+  }));
+
+  return [...fire, ...other, ...sms].sort((a,b)=> b.sortTs - a.sortTs);
+}
+
+function statusColor(s) {
+  return s === 'Ongoing' ? 'red' :
+         s === 'Completed' ? 'green' :
+         s === 'Pending' ? 'orange' :
+         s === 'Received' ? 'blue' : 'yellow';
+}
+
+
+                        function safeRenderAllReports() {
+            try { renderAllReports(); }
+            catch (e) { console.error('renderAllReports failed:', e); }
+            }
+
+            function safeInitRealtime() {
+            try {
+                // Only start listeners when Firebase is actually ready
+                if (window.firebase && firebase.apps && firebase.apps.length && typeof firebase.database === 'function') {
+                initializeRealTimeListener();
+                } else {
+                // Retry a moment later (Firebase script may still be loading)
+                setTimeout(safeInitRealtime, 500);
+                }
+            } catch (e) {
+                console.error('initializeRealTimeListener error:', e);
+            }
+            }
+
+
+              // after renderAllReports() sets tbody HTML:
+                function renderAllReports() {
+                const body = document.getElementById('allReportsBody');
+                if (!body) return;
+
+                const rows = buildAllReports();
+                body.innerHTML = rows.map((r, i) => {
+                    const time24 = to24h(r.time) || r.time || 'N/A';
+                    const dateStr = r.date || 'N/A';
+                    const locBtn = (r.lat != null && r.lng != null)
+                    ? `<a href="javascript:void(0);" onclick="openLocationModal(${r.lat}, ${r.lng})"><img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6"></a>`
+                    : '';
+                    const color = statusColor(r.status);
+                    return `<tr class="border-b" data-merged="1" data-type="${r.type}" data-id="${r.id}">
+                    <td class="px-4 py-2">${i + 1}</td>
+                    <td class="px-4 py-2">${r.location}</td>
+                    <td class="px-4 py-2">${dateStr} ${time24}</td>
+                    <td class="px-4 py-2 status text-${color}-500">${r.status}</td>
+                    <td class="px-4 py-2 space-x-2 flex items-center">
+                        ${locBtn}
+                        <a href="javascript:void(0);" onclick="openDetailsModal('${r.id}','${r.type}')"><img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6"></a>
+                    </td>
+                    </tr>`;
+                }).join('');
+
+                if (typeof filterAllReportsTable === 'function') filterAllReportsTable();
+                }
+
+
+
+
 
                 // ==================================================
                 // Filters
                 // ==================================================
                 function filterFireReportTable() {
                  const levelFilter = document.getElementById('fireLevelFilter').value.toLowerCase();
-                    const statusFilter = document.getElementById('fireStatusFilter').value.toLowerCase();
-                    const locationSearch = document.getElementById('fireLocationSearch').value.toLowerCase();
+                 const statusFilter = document.getElementById('fireStatusFilter').value.toLowerCase();
+                 const locationSearch = document.getElementById('fireLocationSearch').value.toLowerCase();
 
 
                 const mode = document.getElementById('fireDateTimeFilter').value;
@@ -759,35 +1024,130 @@
                 });
                 }
 
-           function handleDateTimeFilterChange() {
-  const mode = document.getElementById('fireDateTimeFilter').value;
-  const d = document.getElementById('fireDateSearch');
-  const t = document.getElementById('fireTimeSearch');
-  if (mode === 'date') {
-    d.classList.remove('hidden'); t.classList.add('hidden');
-  } else if (mode === 'time') {
-    t.classList.remove('hidden'); d.classList.add('hidden');
-  } else {
-    d.classList.add('hidden'); t.classList.add('hidden');
-    d.value = ''; t.value = '';            // clear stale values
-  }
-  filterFireReportTable();                 // always re-evaluate
+                        function handleDateTimeFilterChange() {
+                const mode = document.getElementById('fireDateTimeFilter').value;
+                const d = document.getElementById('fireDateSearch');
+                const t = document.getElementById('fireTimeSearch');
+                if (mode === 'date') {
+                    d.classList.remove('hidden'); t.classList.add('hidden');
+                } else if (mode === 'time') {
+                    t.classList.remove('hidden'); d.classList.add('hidden');
+                } else {
+                    d.classList.add('hidden'); t.classList.add('hidden');
+                    d.value = ''; t.value = '';            // clear stale values
+                }
+                filterFireReportTable();                 // always re-evaluate
+                }
+
+            function handleOtherDateTimeFilterChange() {
+            const mode = document.getElementById('otherDateTimeFilter').value;
+            const d = document.getElementById('otherDateSearch');
+            const t = document.getElementById('otherTimeSearch');
+            if (mode === 'date') {
+                d.classList.remove('hidden'); t.classList.add('hidden');
+            } else if (mode === 'time') {
+                t.classList.remove('hidden'); d.classList.add('hidden');
+            } else {
+                d.classList.add('hidden'); t.classList.add('hidden');
+                d.value = ''; t.value = '';            // clear stale values
+            }
+            filterOtherEmergencyTable();             // always re-evaluate
+            }
+
+            function handleAllDateTimeFilterChange() {
+  const mode = document.getElementById('allDateTimeFilter').value;
+  const d = document.getElementById('allDateSearch');
+  const t = document.getElementById('allTimeSearch');
+  if (mode === 'date') { d.classList.remove('hidden'); t.classList.add('hidden'); t.value=''; }
+  else if (mode === 'time') { t.classList.remove('hidden'); d.classList.add('hidden'); d.value=''; }
+  else { d.classList.add('hidden'); t.classList.add('hidden'); d.value=''; t.value=''; }
+  filterAllReportsTable();
 }
 
-function handleOtherDateTimeFilterChange() {
-  const mode = document.getElementById('otherDateTimeFilter').value;
-  const d = document.getElementById('otherDateSearch');
-  const t = document.getElementById('otherTimeSearch');
-  if (mode === 'date') {
-    d.classList.remove('hidden'); t.classList.add('hidden');
-  } else if (mode === 'time') {
-    t.classList.remove('hidden'); d.classList.add('hidden');
-  } else {
-    d.classList.add('hidden'); t.classList.add('hidden');
-    d.value = ''; t.value = '';            // clear stale values
-  }
-  filterOtherEmergencyTable();             // always re-evaluate
+function filterAllReportsTable() {
+  const locQ = (document.getElementById('allLocationSearch')?.value || '').toLowerCase();
+  const statusQ = (document.getElementById('allStatusFilter')?.value || '').toLowerCase();
+  const mode = document.getElementById('allDateTimeFilter')?.value || 'all';
+  const dateQ = mode === 'date' ? (document.getElementById('allDateSearch')?.value || '') : '';
+  const timeQ = mode === 'time' ? (document.getElementById('allTimeSearch')?.value || '') : '';
+
+  const rows = document.querySelectorAll('#allReportsBody tr');
+  rows.forEach(row => {
+    const tds = row.querySelectorAll('td');
+    const loc = (tds[1]?.textContent || '').toLowerCase();
+    const dtText = (tds[2]?.textContent || '').trim();
+    const status = (tds[3]?.textContent || '').toLowerCase();
+
+    let okDate = true;
+    if (dateQ) {
+      const dmy = (dtText.split(' ')[0] || '');
+      const iso = dateToISO(dmy);
+      okDate = (iso === dateQ);
+    }
+
+    let okTime = true;
+    if (timeQ) {
+      const rawTime = (dtText.split(' ')[1] || '');
+      const norm = to24h(rawTime) || rawTime;
+      okTime = (norm === timeQ);
+    }
+
+    const okLoc = !locQ || loc.includes(locQ);
+    const okStatus = !statusQ || status === statusQ.toLowerCase();
+
+    row.style.display = (okLoc && okStatus && okDate && okTime) ? '' : 'none';
+  });
 }
+
+
+function handleSmsDateTimeFilterChange() {
+  const mode = document.getElementById('smsDateTimeFilter').value;
+  const d = document.getElementById('smsDateSearch');
+  const t = document.getElementById('smsTimeSearch');
+  if (mode === 'date') {
+    d.classList.remove('hidden'); t.classList.add('hidden'); t.value = '';
+  } else if (mode === 'time') {
+    t.classList.remove('hidden'); d.classList.add('hidden'); d.value = '';
+  } else {
+    d.classList.add('hidden'); t.classList.add('hidden'); d.value = ''; t.value = '';
+  }
+  filterSmsReportsTable();
+}
+
+function filterSmsReportsTable() {
+  const qLoc = (document.getElementById('smsLocationSearch')?.value || '').toLowerCase();
+  const mode = document.getElementById('smsDateTimeFilter')?.value || 'all';
+  const dateQ = mode === 'date' ? (document.getElementById('smsDateSearch')?.value || '') : '';
+  const timeQ = mode === 'time' ? (document.getElementById('smsTimeSearch')?.value || '') : '';
+
+  const rows = document.querySelectorAll('#smsReportsBody tr');
+  rows.forEach(row => {
+    const tds = row.querySelectorAll('td');
+    const loc = (tds[1]?.textContent || '').toLowerCase();
+    const dtText = (tds[2]?.textContent || '').trim().replace(/\s+/g,' ').trim(); // "dd/mm/yyyy HH:MM"
+
+    let okDate = true;
+    if (dateQ) {
+      const parts = dtText.split(' ');
+      const dmy = parts[0] || '';
+      const iso = dateToISO(dmy);
+      okDate = (iso === dateQ);
+    }
+
+    let okTime = true;
+    if (timeQ) {
+      const parts = dtText.split(' ');
+      const rawTime = parts[1] || '';
+      const norm = to24h(rawTime) || rawTime;
+      okTime = (norm === timeQ);
+    }
+
+    const okLoc = !qLoc || loc.includes(qLoc);
+    row.style.display = (okLoc && okDate && okTime) ? '' : 'none';
+  });
+}
+
+
 
 
                 function focusFireDatePicker() {
@@ -878,16 +1238,28 @@ function handleOtherDateTimeFilterChange() {
                 // ==================================================
                 // Incident Type Toggle
                 // ==================================================
-                function toggleIncidentTables() {
-                const selectedValue = document.getElementById('incidentType').value;
-                if (selectedValue === 'fireReports') {
+               function toggleIncidentTables() {
+                const v = document.getElementById('incidentType').value;
+
+                // hide all
+                document.getElementById('allReportsSection').classList.add('hidden');
+                document.getElementById('fireReportsSection').classList.add('hidden');
+                document.getElementById('otherEmergencySection').classList.add('hidden');
+                document.getElementById('smsReportsSection').classList.add('hidden');
+
+                // show selected
+                if (v === 'allReports') {
+                    document.getElementById('allReportsSection').classList.remove('hidden');
+                    renderAllReports(); // keep All fresh
+                } else if (v === 'fireReports') {
                     document.getElementById('fireReportsSection').classList.remove('hidden');
-                    document.getElementById('otherEmergencySection').classList.add('hidden');
-                } else {
-                    document.getElementById('fireReportsSection').classList.add('hidden');
+                } else if (v === 'otherEmergency') {
                     document.getElementById('otherEmergencySection').classList.remove('hidden');
+                } else if (v === 'smsReports') {
+                    document.getElementById('smsReportsSection').classList.remove('hidden');
                 }
                 }
+
 
                 // ==================================================
                 // Details Modal
@@ -924,7 +1296,19 @@ function handleOtherDateTimeFilterChange() {
                    document.getElementById('detailReportTimeOther').innerText = to24h(report.reportTime) || 'N/A';
                     document.getElementById('fireReportDetails').classList.add('hidden');
                     document.getElementById('otherEmergencyDetails').classList.remove('hidden');
-                }
+                } else if (reportType === 'smsReports') {
+                    // reuse "other" panel for simple fields
+                    document.getElementById('detailIncidentIdOther').innerText = report.id || 'N/A';
+                    document.getElementById('detailNameOther').innerText = report.name || 'N/A';
+                    document.getElementById('detailContactOther').innerText = report.contact || 'N/A';
+                    document.getElementById('detailEmergencyType').innerText = (report.emergencyType || 'SMS Report');
+                    document.getElementById('detailLocationOther').innerText = (report.location || report.exactLocation || 'N/A');
+                    document.getElementById('detailDateOther').innerText = report.date || 'N/A';
+                    document.getElementById('detailReportTimeOther').innerText = to24h(report.time) || report.time || 'N/A';
+                    document.getElementById('fireReportDetails').classList.add('hidden');
+                    document.getElementById('otherEmergencyDetails').classList.remove('hidden');
+                    }
+
 
                 const statusActionDiv = document.getElementById('statusActionButtons');
                 statusActionDiv.innerHTML = '';
