@@ -93,8 +93,6 @@
 
     </div>
 
-
-
                        <!-- Recent Fire Incidents Table -->
     <div id="fireReportsSection" class="bg-white p-6 shadow rounded-lg hidden">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Incident Reports</h2>
@@ -312,6 +310,7 @@
             <th class="px-4 py-2 text-left text-gray-600">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
             <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
         </tr>
 
@@ -343,34 +342,42 @@
         </thead>
 
             <tbody id="smsReportsBody">
-                @foreach(($smsReports ?? []) as $index => $report)
-                <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="smsReports">
-                    <td class="px-4 py-2">{{ $index + 1 }}</td>
-                    <td class="px-4 py-2">{{ $report['location'] ?? 'N/A' }}</td>
-                    <td class="px-4 py-2">
-                    {{ $report['date'] ?? 'N/A' }}
-                    {{ $report['time'] ?? 'N/A' }}
-                    </td>
-                    <td class="px-4 py-2 space-x-2 flex items-center">
-                    @php
-                        $lat = $report['latitude'] ?? null; $lng = $report['longitude'] ?? null;
-                    @endphp
-                    @if(!is_null($lat) && !is_null($lng))
-                        <a href="javascript:void(0);" onclick="openLocationModal({{ $lat }}, {{ $lng }})">
-                        <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-                        </a>
-                    @endif
-                    <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'smsReports')">
-                        <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-                    </a>
-                    </td>
-                </tr>
-                @endforeach
+                        @foreach(($smsReports ?? []) as $index => $report)
+            @php
+            $lat = $report['latitude'] ?? null; $lng = $report['longitude'] ?? null;
+            $statusRaw = $report['status'] ?? 'Pending';
+            $status    = ucfirst(strtolower($statusRaw));
+            $color     = $status === 'Ongoing'   ? 'red'
+                        : ($status === 'Completed'? 'green'
+                        : ($status === 'Pending'  ? 'orange'
+                        : ($status === 'Received' ? 'blue' : 'yellow')));
+            @endphp
+            <tr id="reportRow{{ $report['id'] }}" class="border-b" data-report='@json($report)' data-type="smsReports">
+            <td class="px-4 py-2">{{ $index + 1 }}</td>
+            <td class="px-4 py-2">{{ $report['location'] ?? 'N/A' }}</td>
+            <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['time'] ?? 'N/A' }}</td>
+
+            {{-- STATUS column --}}
+            <td class="px-4 py-2 status text-{{ $color }}-500">{{ $status }}</td>
+
+            {{-- ACTION column --}}
+            <td class="px-4 py-2 space-x-2 flex items-center">
+                @if(!is_null($lat) && !is_null($lng))
+                <a href="javascript:void(0);" onclick="openLocationModal({{ $lat }}, {{ $lng }})">
+                    <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+                </a>
+                @endif
+                <a href="javascript:void(0);" onclick="openDetailsModal('{{ $report['id'] }}', 'smsReports')">
+                <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+                </a>
+            </td>
+            </tr>
+            @endforeach
+
             </tbody>
             </table>
         </div>
     </div>
-
 
 
     <!-- Message Modal for Fire Reports -->
@@ -512,6 +519,21 @@
                             </div>
                         </div>
 
+                                    <!-- inside #detailsModal, below the details panels -->
+                    <div id="smsExtra" class="space-y-4 hidden mt-6">
+                    <div class="flex justify-between">
+                        <strong class="text-gray-700">Nearest Station:</strong>
+                        <span id="detailSmsStation" class="text-gray-600"></span>
+                    </div>
+
+                    <div>
+                        <strong class="text-gray-700 block mb-1">Report Details:</strong>
+                        <p id="detailSmsReportText" class="text-gray-600"></p>
+                    </div>
+                    </div>
+
+
+
 
                             <!-- Action Buttons -->
                             <div class="flex justify-end mt-6 space-x-4">
@@ -625,18 +647,38 @@
                 return null;
                 }
 
-                function nodes() {
-                const p = stationPrefixFromEmail(SESSION_EMAIL);
-                if (!p) return null;
-                return {
-                    prefix: p,
-                    base: `${p}FireStation`,
-                    fireReport: `${p}FireStation/${p}FireReport`,
-                    otherEmergency: `${p}FireStation/${p}OtherEmergency`,
-                    profile: `${p}FireStation/${p}Profile`,
-                    firefighters: `${p}FireStation/${p}FireFighters`
-                };
-                }
+               function nodes() {
+            const p = stationPrefixFromEmail(SESSION_EMAIL);
+            if (!p) return null;
+            return {
+                prefix: p,
+                base: `${p}FireStation`,
+                fireReport: `${p}FireStation/${p}FireReport`,
+                otherEmergency: `${p}FireStation/${p}OtherEmergency`,
+                // SMS may be saved in either of these (or very old root fallback)
+                smsCandidates: [
+                `${p}FireStation/${p}SmsReport`,
+                `${p}FireStation/SmsReport`,
+                `SmsReport`
+                ],
+                profile: `${p}FireStation/${p}Profile`,
+                firefighters: `${p}FireStation/${p}FireFighters`
+            };
+            }
+
+            async function resolveSmsPathById(id) {
+            const n = nodes();
+            if (!n) return null;
+            for (const base of n.smsCandidates) {
+                const snap = await firebase.database().ref(`${base}/${id}`).once('value');
+                if (snap.exists()) return base; // found the node that holds this incident
+            }
+            // not found — default to the first candidate
+            return n.smsCandidates[0] || null;
+            }
+
+
+
 
 
                 // ==================================================
@@ -1195,7 +1237,6 @@ function filterSmsReportsTable() {
                 }
 
 
-
                 function filterOtherEmergencyTable() {
                   const typeFilter = document.getElementById('emergencyTypeFilter').value.toLowerCase();
                     const statusFilter = document.getElementById('otherStatusFilter').value.toLowerCase();
@@ -1264,7 +1305,7 @@ function filterSmsReportsTable() {
                 // ==================================================
                 // Details Modal
                 // ==================================================
-                function openDetailsModal(incidentId, reportType) {
+                                function openDetailsModal(incidentId, reportType) {
                 const row = document.getElementById(`reportRow${incidentId}`);
                 if (!row) return;
 
@@ -1272,6 +1313,9 @@ function filterSmsReportsTable() {
                 row.style.color = '';
                 const report = JSON.parse(row.getAttribute('data-report'));
                 if (!report) return;
+
+                // default: hide SMS extra block
+                document.getElementById('smsExtra').classList.add('hidden');
 
                 if (reportType === 'fireReports') {
                     document.getElementById('detailIncidentId').innerText = report.id || 'N/A';
@@ -1286,6 +1330,7 @@ function filterSmsReportsTable() {
                     document.getElementById('detailReportTime').innerText = to24h(report.reportTime) || 'N/A';
                     document.getElementById('fireReportDetails').classList.remove('hidden');
                     document.getElementById('otherEmergencyDetails').classList.add('hidden');
+
                 } else if (reportType === 'otherEmergency') {
                     document.getElementById('detailIncidentIdOther').innerText = report.id || 'N/A';
                     document.getElementById('detailNameOther').innerText = report.name || 'N/A';
@@ -1293,10 +1338,11 @@ function filterSmsReportsTable() {
                     document.getElementById('detailEmergencyType').innerText = report.emergencyType || 'N/A';
                     document.getElementById('detailLocationOther').innerText = report.exactLocation || 'N/A';
                     document.getElementById('detailDateOther').innerText = report.date || 'N/A';
-                   document.getElementById('detailReportTimeOther').innerText = to24h(report.reportTime) || 'N/A';
+                    document.getElementById('detailReportTimeOther').innerText = to24h(report.reportTime) || 'N/A';
                     document.getElementById('fireReportDetails').classList.add('hidden');
                     document.getElementById('otherEmergencyDetails').classList.remove('hidden');
-                } else if (reportType === 'smsReports') {
+
+               } else if (reportType === 'smsReports') {
                     // reuse "other" panel for simple fields
                     document.getElementById('detailIncidentIdOther').innerText = report.id || 'N/A';
                     document.getElementById('detailNameOther').innerText = report.name || 'N/A';
@@ -1305,14 +1351,21 @@ function filterSmsReportsTable() {
                     document.getElementById('detailLocationOther').innerText = (report.location || report.exactLocation || 'N/A');
                     document.getElementById('detailDateOther').innerText = report.date || 'N/A';
                     document.getElementById('detailReportTimeOther').innerText = to24h(report.time) || report.time || 'N/A';
+
+                    // show panels
                     document.getElementById('fireReportDetails').classList.add('hidden');
                     document.getElementById('otherEmergencyDetails').classList.remove('hidden');
+                    document.getElementById('smsExtra').classList.remove('hidden');
+
+                    // SMS extras (no map)
+                    document.getElementById('detailSmsStation').innerText = report.fireStationName || 'N/A';
+                    document.getElementById('detailSmsReportText').innerText = report.fireReport || report.message || 'N/A';
                     }
 
 
+                // status buttons
                 const statusActionDiv = document.getElementById('statusActionButtons');
                 statusActionDiv.innerHTML = '';
-
                 if (report.status !== 'Completed') {
                     const button = document.createElement('button');
                     button.id = `acceptButton${report.id}`;
@@ -1335,31 +1388,52 @@ function filterSmsReportsTable() {
                 document.getElementById('detailsModal').classList.remove('hidden');
                 }
 
-                function updateReportStatus(incidentId, reportType, newStatus) {
-                const n = nodes();
-                if (!n) return;
 
-                const row = document.getElementById(`reportRow${incidentId}`);
-                if (!row) return;
+                       async function updateReportStatus(incidentId, reportType, newStatus) {
+                    const n = nodes();
+                    if (!n) return;
 
-                const report = JSON.parse(row.getAttribute('data-report')) || {};
-                report.status = newStatus;
-                row.setAttribute('data-report', JSON.stringify(report));
+                    const row = document.getElementById(`reportRow${incidentId}`);
+                    if (!row) return;
 
-                const statusCell = row.querySelector('.status');
-                statusCell.innerText = newStatus;
-                statusCell.classList.remove('text-yellow-500','text-red-500','text-green-500','text-orange-500','text-blue-500');
-                statusCell.classList.add(`text-${newStatus === 'Ongoing' ? 'red' : newStatus === 'Completed' ? 'green' : newStatus === 'Pending' ? 'orange' : newStatus === 'Received' ? 'blue' : 'yellow'}-500`);
+                    const report = JSON.parse(row.getAttribute('data-report')) || {};
+                    report.status = newStatus;
+                    row.setAttribute('data-report', JSON.stringify(report));
 
-                const path = reportType === 'fireReports' ? n.fireReport : n.otherEmergency;
-                firebase.database().ref(`${path}/${incidentId}`).update({ status: newStatus })
-                    .then(() => {
-                    updateTableStatus(incidentId, newStatus);
-                    closeDetailsModal();
-                    if (typeof showToast === 'function') showToast(`Status updated to ${newStatus}`);
-                    })
-                    .catch(console.error);
-                }
+                    const statusCell = row.querySelector('.status');
+                    statusCell.innerText = newStatus;
+                    statusCell.classList.remove('text-yellow-500','text-red-500','text-green-500','text-orange-500','text-blue-500');
+                    statusCell.classList.add(`text-${newStatus === 'Ongoing' ? 'red' : newStatus === 'Completed' ? 'green' : newStatus === 'Pending' ? 'orange' : newStatus === 'Received' ? 'blue' : 'yellow'}-500`);
+
+                    // choose node
+                    let path = null;
+                    if (reportType === 'fireReports') path = n.fireReport;
+                    else if (reportType === 'otherEmergency') path = n.otherEmergency;
+                    else if (reportType === 'smsReports') path = await resolveSmsPathById(incidentId);
+
+                    if (!path) return;
+
+                    firebase.database().ref(`${path}/${incidentId}`).update({ status: newStatus })
+                        .then(() => {
+                        updateTableStatus?.(incidentId, newStatus);
+                        closeDetailsModal();
+                        showToast?.(`Status updated to ${newStatus}`);
+                        })
+                        .catch(console.error);
+                    }
+
+
+            function capStatus(s) {
+  if (!s) return 'Unknown';
+  const t = String(s).toLowerCase();
+  return t === 'pending' ? 'Pending'
+       : t === 'ongoing' ? 'Ongoing'
+       : t === 'completed' ? 'Completed'
+       : t === 'received' ? 'Received'
+       : s;
+}
+
+
 
                 function closeDetailsModal() {
                 document.getElementById('detailsModal').classList.add('hidden');

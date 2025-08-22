@@ -120,6 +120,41 @@ class FirebaseService
         }
     }
 
+    public function updateSmsReportStatus(string $prefix, string $incidentId, string $status): bool
+{
+    try {
+        // Try both possible nodes the Android app uses
+        $candidates = [
+            "{$prefix}FireStation/{$prefix}SmsReport",
+            "{$prefix}FireStation/SmsReport",
+            "SmsReport", // legacy/root fallback
+        ];
+
+        $found = false;
+        foreach ($candidates as $node) {
+            $ref = $this->database->getReference("$node/$incidentId");
+            if ($ref->getSnapshot()->exists()) {
+                $ref->update(['status' => $status]);
+                $found = true;
+                break;
+            }
+        }
+
+        // If not found, write to the first candidate to avoid silent failure
+        if (!$found) {
+            $this->database
+                ->getReference($candidates[0]."/$incidentId")
+                ->update(['status' => $status]);
+        }
+
+        return true;
+    } catch (\Throwable $e) {
+        Log::error("updateSmsReportStatus error: ".$e->getMessage());
+        return false;
+    }
+}
+
+
 
 
     public function updateScopedReportStatus(string $prefix, string $reportType, string $incidentId, string $status): bool
@@ -177,37 +212,64 @@ class FirebaseService
         }
     }
 
-    // ---------- SMS (unchanged) ----------
-  public function getSmsReports(string $prefix): array
+  private function normalizeTime(?string $t): ?string
+{
+    if (!$t) return null;
+
+    // Case 1: Already looks like HH:MM:SS
+    if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $t)) {
+        return $t; // keep as is (24h)
+    }
+
+    // Case 2: Parse AM/PM style like "11:23 PM"
+    $parsed = strtotime($t);
+    if ($parsed) {
+        return date('H:i:s', $parsed);
+    }
+
+    return $t; // fallback
+}
+
+public function getSmsReports(string $prefix): array
 {
     try {
-        // Correct the path to point directly to the SmsReport node
-        $reference = $this->database->getReference("{$prefix}FireStation/SmsReport");
-        $reports = $reference->getValue();
-        $result = [];
+        $candidates = [
+            "{$prefix}FireStation/SmsReport",
+            "{$prefix}FireStation/{$prefix}SmsReport",
+        ];
 
-        if ($reports) {
-            foreach ($reports as $id => $report) {
-                $result[] = [
-                    'id' => $id,
-                    'name' => $report['name'] ?? null,
-                    'location' => $report['location'] ?? null,
-                    'fireReport' => $report['fireReport'] ?? null,
-                    'date' => $report['date'] ?? null,
-                    'time' => $report['time'] ?? null,
-                    'latitude' => $report['latitude'] ?? null,
-                    'longitude' => $report['longitude'] ?? null,
-                    'status' => $report['status'] ?? 'Pending',
-                ];
-            }
+        $raw = null;
+        foreach ($candidates as $node) {
+            $tmp = $this->database->getReference($node)->getValue();
+            if ($tmp) { $raw = $tmp; break; }
         }
+        if (!$raw) return [];
 
-        return $result;
-    } catch (\Exception $e) {
-        Log::error("Error fetching SMS reports: " . $e->getMessage());
+        $out = [];
+        foreach ($raw as $id => $report) {
+            $out[] = [
+                'id'        => $id,
+                'name'      => $report['name'] ?? null,
+                'location'  => $report['location'] ?? null,
+                'fireReport'=> $report['fireReport'] ?? $report['message'] ?? null,
+                'date'      => $report['date'] ?? null,
+                'time'      => $this->normalizeTime($report['time'] ?? null),
+                'contact'   => $report['contact'] ?? null,
+                'latitude'  => $report['latitude'] ?? null,
+                'longitude' => $report['longitude'] ?? null,
+                'status'    => ucfirst(strtolower($report['status'] ?? 'Pending')),
+                'timestamp' => $report['timestamp'] ?? $report['createdAt'] ?? $report['updatedAt'] ?? null,
+                'fireStationName' => $report['fireStationName'] ?? null,
+            ];
+        }
+        return $out;
+    } catch (\Throwable $e) {
+        Log::error("Error fetching SMS reports ($prefix): ".$e->getMessage());
         return [];
     }
 }
+
+
 
 
 }

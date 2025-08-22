@@ -13,9 +13,9 @@
         <img src="{{ asset('images/report.png')}}" alt="Incident Reports">Incident Reports
     </a>
 
-     <a href="{{ route('sms-reports') }}" class="{{ request()->routeIs('sms-reports') ? 'active' : '' }}">
+     {{-- <a href="{{ route('sms-reports') }}" class="{{ request()->routeIs('sms-reports') ? 'active' : '' }}">
         <img src="{{ asset('images/sms.png')}}" alt="Incident Reports">Sms Reports
-    </a>
+    </a> --}}
 
     <a href="{{ route('fire-fighters') }}" class="{{ request()->routeIs('fire-fighters') ? 'active' : '' }}">
         <img src="{{ asset('images/fireman.png')}}" alt="Fire Fighters">Fire Fighters
