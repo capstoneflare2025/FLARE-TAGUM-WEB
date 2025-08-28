@@ -68,15 +68,15 @@ const activeToasts = new Map();
 
 document.addEventListener('DOMContentLoaded', function () {
 
- const firebaseConfig = {
-  apiKey: "AIzaSyAb50PtW6vHKhHC29zRfI2GKmQ4nddMG5A",
-  authDomain: "flare-capstone-468319.firebaseapp.com",
-  databaseURL: "https://flare-capstone-468319-default-rtdb.firebaseio.com",
-  projectId: "flare-capstone-468319",
-  storageBucket: "flare-capstone-468319.firebasestorage.app",
-  messagingSenderId: "272168206378",
-  appId: "1:272168206378:web:9db2f6ca754d5a57cc8353",
-  measurementId: "G-CQH6ZLSM5R"
+const firebaseConfig = {
+  apiKey: "AIzaSyCrjSyOI-qzCaJptEkWiRfEuaG28ugTmdE",
+  authDomain: "capstone-flare-2025.firebaseapp.com",
+  databaseURL: "https://capstone-flare-2025-default-rtdb.firebaseio.com",
+  projectId: "capstone-flare-2025",
+  storageBucket: "capstone-flare-2025.firebasestorage.app",
+  messagingSenderId: "685814202928",
+  appId: "1:685814202928:web:9b484f04625e5870c9a3f5",
+  measurementId: "G-QZ8P5VLHF2"
 };
 
   firebase.initializeApp(firebaseConfig);
