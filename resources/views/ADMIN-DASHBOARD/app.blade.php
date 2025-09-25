@@ -52,12 +52,14 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <!-- Maps/Leaflet (unchanged) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNyhUph8_RefB5yw_lr43J_7AMkeYICfU-lTQZYnbo&libraries=geometry&callback=initMap" async defer></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNyhUph8_RefB5yw_lr43J_7AMkeYICfU&libraries=geometry,places&callback=initMap" async defer></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNyhUph8_RefB5yw_lr43J_7AMkeYICfU&libraries=places"></script>
+   <!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Routing plugin -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
 <script>

@@ -446,26 +446,39 @@
         </div>
     </div>
 
-                    <!-- Location Modal -->
-                <!-- Location Modal -->
-                        <div id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-                            <div style="width: 1000px; margin-left:250px;" class="bg-white rounded-lg p-6 w-full shadow-lg relative" style="max-height: 80vh; overflow-y:auto;">
-                                <h3 class="text-lg font-semibold mb-4 text-gray-800">Report Location</h3>
+                        <!-- Location Modal -->
+     <!-- Location Modal -->
+<div id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg p-6 w-full shadow-lg relative"
+       style="max-width: 1100px; width: calc(100% - 280px); margin-left: 350px;">
 
-                                <!-- Map Container (Flexbox layout) -->
-                                <div class="flex space-x-4">
-                                    <!-- Google Maps 1 (iframe for route) -->
-                                    <div style="flex: 1;">
-                                        <iframe id="mapIframe" src="" width="100%" height="470" style="border:0;" allowfullscreen loading="lazy"></iframe>
-                                    </div>
+    <h3 class="text-lg font-semibold mb-4 text-gray-800">Report Location</h3>
 
-                                    <!-- Google Maps 2 (div for geofencing) -->
-                                    <div id="mapContainer" style="flex: 1; height: 470px;"></div>
-                                </div>
+    <!-- Two side-by-side maps -->
+    <div class="flex gap-4">
+      <!-- Left: routing -->
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div id="routeMap" style="flex:1; height: 470px;"></div>
+        <!-- Route summaries go here -->
+        <div id="routeInfo"
+             class="mt-2 text-sm text-gray-700"
+             style="min-height: 40px; max-height:120px; overflow-y:auto;">
+          <em>Finding best routes…</em>
+        </div>
+      </div>
 
-                                <button onclick="closeLocationModal()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-                            </div>
-                        </div>
+      <!-- Right: geofencing -->
+      <div id="fenceMap" style="flex:1; height: 470px;"></div>
+    </div>
+
+    <!-- Close button -->
+    <button onclick="closeLocationModal()"
+            class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">
+      &times;
+    </button>
+  </div>
+</div>
+
 
 
 
@@ -1874,111 +1887,176 @@ function filterSmsReportsTable() {
                     .catch(console.error);
                 });
             }
+let __routeMap, __fenceMap, __routeCtrl;
+
+async function openLocationModal(reportLat, reportLng) {
+  const n = nodes(); if (!n) return;
+
+  try {
+    const snap = await firebase.database().ref(n.profile).once('value');
+    const meta = snap.val() || {};
+    const stationLat = parseFloat(meta.latitude);
+    const stationLng = parseFloat(meta.longitude);
+
+    if (![reportLat, reportLng, stationLat, stationLng].every(Number.isFinite)) {
+      console.error("Invalid coordinates.");
+      return;
+    }
+
+    // 👉 make the modal visible first
+    const modal = document.getElementById('locationModal');
+    modal.classList.remove('hidden');
+
+    // then build maps
+    await updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng });
+
+    // and finally refresh sizes
+    setTimeout(() => {
+      __routeMap?.invalidateSize();
+      __fenceMap?.invalidateSize();
+    }, 60);
+
+  } catch (e) {
+    console.error('Error fetching station profile:', e);
+  }
+}
 
 
-            // ==================================================
-            // Location Modal and Map (Using Google Maps for Routing and Geofencing)
-            // ==================================================
-            async function openLocationModal(reportLat, reportLng) {
-                const n = nodes();
-                if (!n) return;
+function updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng }) {
+  // Clean previous instances
+  try { __routeCtrl && __routeCtrl.remove(); } catch {}
+  try { __routeMap && __routeMap.remove(); } catch {}
+  try { __fenceMap && __fenceMap.remove(); } catch {}
 
-                try {
-                    const snap = await firebase.database().ref(n.profile).once('value');
-                    const meta = snap.val() || {};
-                    const stationLatitude = meta.latitude;
-                    const stationLongitude = meta.longitude;
-                    if (stationLatitude == null || stationLongitude == null) return;
+  const mkTile = () =>
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    });
 
-                    updateMapAndGoogle(reportLat, reportLng, stationLatitude, stationLongitude);
-                    document.getElementById('locationModal').classList.remove('hidden');
-                } catch (e) {
-                    console.error('Error fetching station profile:', e);
-                }
-            }
+  // Icons
+  const stationIcon = L.icon({
+    iconUrl: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+    iconSize: [28, 28]
+  });
+  const reportIcon = L.icon({
+    iconUrl: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+    iconSize: [28, 28]
+  });
+
+  // -----------------------
+  // Left: Routing map
+  // -----------------------
+  __routeMap = L.map('routeMap').setView([reportLat, reportLng], 13);
+  mkTile().addTo(__routeMap);
+
+  L.marker([stationLat, stationLng], { icon: stationIcon })
+    .addTo(__routeMap).bindPopup('Fire Station');
+  L.marker([reportLat, reportLng], { icon: reportIcon })
+    .addTo(__routeMap).bindPopup('Report Location');
+
+  const routeBounds = L.latLngBounds(
+    [[stationLat, stationLng], [reportLat, reportLng]]
+  );
+  __routeMap.fitBounds(routeBounds.pad(0.2));
+
+  const primaryStyle = { color: '#1976d2', weight: 6, opacity: 0.9 };
+  const altStyle     = { color: '#9e9e9e', weight: 5, opacity: 0.6, dashArray: '6,8' };
+
+  __routeCtrl = L.Routing.control({
+    waypoints: [
+      L.latLng(stationLat, stationLng),
+      L.latLng(reportLat, reportLng)
+    ],
+    router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1',
+      profile: 'car'
+    }),
+    show: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    routeWhileDragging: false,
+    fitSelectedRoutes: true,
+    showAlternatives: true,      // show multiple routes
+    altLineOptions: altStyle,
+    lineOptions: primaryStyle,
+    createMarker: () => null
+  }).addTo(__routeMap);
+
+  // Populate #routeInfo with summaries
+  __routeCtrl.on('routesfound', e => {
+    const info = document.getElementById('routeInfo');
+    if (!info) return;
+
+    const km = m => (m / 1000).toFixed(1);
+    const mins = s => Math.round(s / 60);
+
+    const bestTime = Math.min(...e.routes.map(r => r.summary.totalTime));
+    const bestDist = Math.min(...e.routes.map(r => r.summary.totalDistance));
+
+    info.innerHTML = e.routes.map((r, i) => {
+      const distKm = km(r.summary.totalDistance);
+      const timeMin = mins(r.summary.totalTime);
+
+      const tags = [];
+      if (r.summary.totalTime === bestTime) tags.push('Fastest');
+      if (r.summary.totalDistance === bestDist) tags.push('Shortest');
+
+      return `
+        <button data-idx="${i}"
+                class="route-pill"
+                style="display:inline-flex;align-items:center;gap:8px;margin:6px 8px 0 0;
+                       padding:6px 10px;border:1px solid #ddd;border-radius:999px;
+                       background:#fff;cursor:pointer;">
+          <span><strong>${distKm} km</strong></span>
+          <span>•</span>
+          <span>${timeMin} min</span>
+          ${tags.length ? `<span style="background:#eef5ff;color:#1976d2;padding:2px 6px;border-radius:999px;font-size:12px">${tags.join('/')}</span>` : ''}
+        </button>
+      `;
+    }).join('');
+
+    // Allow user to select a route
+    info.querySelectorAll('.route-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.getAttribute('data-idx'));
+        __routeCtrl.setRoutes([ e.routes[idx], ...e.routes.filter((_,i)=>i!==idx) ]);
+      });
+    });
+  });
+
+  // -----------------------
+  // Right: Geofencing map
+  // -----------------------
+  __fenceMap = L.map('fenceMap').setView([reportLat, reportLng], 17);
+  mkTile().addTo(__fenceMap);
+
+  L.marker([reportLat, reportLng], { icon: reportIcon })
+    .addTo(__fenceMap).bindPopup('Report Location').openPopup();
+
+  L.circle([reportLat, reportLng], {
+    radius: 50,
+    color: 'red',
+    fillColor: '#f03',
+    fillOpacity: 0.25,
+    weight: 2
+  }).addTo(__fenceMap);
+
+  L.marker([stationLat, stationLng], { icon: stationIcon })
+    .addTo(__fenceMap).bindPopup('Fire Station');
+
+  const fenceBounds = L.latLngBounds([
+    [reportLat, reportLng],
+    [stationLat, stationLng]
+  ]);
+  __fenceMap.fitBounds(fenceBounds.pad(0.3));
+}
+
+function closeLocationModal() {
+  document.getElementById('locationModal').classList.add('hidden');
+}
 
 
-            // Function to update the map and use Google Maps for routing and geofencing
-            function updateMapAndGoogle(reportLat, reportLng, stationLat, stationLng) {
-                const mapContainer = document.getElementById('mapContainer');
-
-                // Initialize the Google Map
-                const googleMap = new google.maps.Map(mapContainer, {
-                    center: { lat: reportLat, lng: reportLng },
-                    zoom: 12,
-                    mapTypeId: google.maps.MapTypeId.ROADMAP,
-                });
-
-                // Create custom icons for report and station locations
-                const reportIcon = {
-                    url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",  // Custom red icon
-                    scaledSize: new google.maps.Size(32, 32),  // Adjust size
-                };
-
-                const stationIcon = {
-                    url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png",  // Custom yellow icon
-                    scaledSize: new google.maps.Size(32, 32),  // Adjust size
-                };
-
-                // Add a marker for the report location with the red icon
-                const reportMarker = new google.maps.Marker({
-                    position: { lat: reportLat, lng: reportLng },
-                    map: googleMap,
-                    title: "Report Location",
-                    icon: reportIcon,  // Use the red icon for report location
-                });
-
-                // Add a marker for the fire station location with the yellow icon
-                const stationMarker = new google.maps.Marker({
-                    position: { lat: stationLat, lng: stationLng },
-                    map: googleMap,
-                    title: "Fire Station Location",
-                    icon: stationIcon,  // Use the yellow icon for fire station
-                });
-
-                // Add a geofence circle around the report location
-                const geofenceCircle = new google.maps.Circle({
-                    map: googleMap,
-                    center: { lat: reportLat, lng: reportLng },
-                    radius: 50,  // 1 km radius for geofencing
-                    fillColor: "#FF0000",
-                    fillOpacity: 0.3,
-                    strokeColor: "#FF0000",
-                    strokeWeight: 2,
-                });
-
-                // Calculate and display the route between the report and fire station
-                const directionsService = new google.maps.DirectionsService();
-                const directionsRenderer = new google.maps.DirectionsRenderer({
-                    map: googleMap,
-                    suppressMarkers: true, // We have custom markers
-                });
-
-                const request = {
-                    origin: { lat: reportLat, lng: reportLng },
-                    destination: { lat: stationLat, lng: stationLng },
-                    travelMode: google.maps.TravelMode.DRIVING,
-                };
-
-                directionsService.route(request, (result, status) => {
-                    if (status === google.maps.DirectionsStatus.OK) {
-                        directionsRenderer.setDirections(result);
-                    } else {
-                        console.error("Directions request failed due to " + status);
-                    }
-                });
-
-
-
-                // Google Maps iframe for route (still keeps the route as it is in the iframe)
-                const mapSrc = `https://www.google.com/maps/embed/v1/directions?origin=${reportLat},${reportLng}&destination=${stationLat},${stationLng}&key=AIzaSyCjyZfmle9R0c6HJkScAnkjJ0vOs5_a-6E`;
-                document.getElementById('mapIframe').setAttribute('src', mapSrc);
-            }
-
-            // Close the location modal
-            function closeLocationModal() {
-                document.getElementById('locationModal').classList.add('hidden');
-            }
 
                 </script>
 

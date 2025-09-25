@@ -14,15 +14,17 @@ return [
     |
     */
 
-  'firebase' => [
-    'api_key'      => env('FIREBASE_API_KEY'),
-    'project_id'   => env('FIREBASE_PROJECT_ID'),
-    'client_email' => env('FIREBASE_CLIENT_EMAIL'),
-    'private_key'  => env('FIREBASE_PRIVATE_KEY'),
-    'database_url' => env('FIREBASE_DATABASE_URL'),
-],
+    'firebase' => [
+        'api_key'      => env('FIREBASE_API_KEY'),
+        'project_id'   => env('FIREBASE_PROJECT_ID'),
+        'client_email' => env('FIREBASE_CLIENT_EMAIL'),
+        'private_key'  => env('FIREBASE_PRIVATE_KEY'),
+        'database_url' => env('FIREBASE_DATABASE_URL'),
+    ],
 
-
+    'google' => [
+        'maps_key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
 
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
