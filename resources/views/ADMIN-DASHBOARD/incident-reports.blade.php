@@ -1359,8 +1359,7 @@ function filterSmsReportsTable() {
 
 
 
-
-                function focusFireDatePicker() {
+        function focusFireDatePicker() {
                 const sel = document.getElementById('fireDateTimeFilter');
                 if (sel) sel.value = 'date';
                 handleDateTimeFilterChange();
@@ -1887,6 +1886,20 @@ function filterSmsReportsTable() {
                     .catch(console.error);
                 });
             }
+
+
+// helper: snap coords to nearest road
+async function snapToRoad(lat, lng) {
+  try {
+    const url = `https://router.project-osrm.org/nearest/v1/car/${lng},${lat}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const wp = data?.waypoints?.[0]?.location;
+    return Array.isArray(wp) ? [wp[1], wp[0]] : [lat, lng]; // [lat, lng]
+  } catch {
+    return [lat, lng]; // fallback if OSRM fails
+  }
+}
 let __routeMap, __fenceMap, __routeCtrl;
 
 async function openLocationModal(reportLat, reportLng) {
@@ -1921,9 +1934,50 @@ async function openLocationModal(reportLat, reportLng) {
   }
 }
 
+// ---------- helpers (add once) ----------
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.openstreetmap.ru/api/interpreter"
+];
 
-function updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng }) {
-  // Clean previous instances
+function fetchWithTimeout(url, opts = {}, ms = 12000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+
+
+async function countBuildingsWithin(lat, lng, radiusMeters) {
+  const q = `
+    [out:json][timeout:25];
+    (
+      node["building"](around:${radiusMeters},${lat},${lng});
+      way["building"](around:${radiusMeters},${lat},${lng});
+      relation["building"](around:${radiusMeters},${lat},${lng});
+    );
+    out ids;
+  `.trim();
+
+  for (const url of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetchWithTimeout(url, { method: "POST", body: q });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const ids = new Set((data.elements || []).map(e => `${e.type}/${e.id}`));
+      return ids.size; // unique building features
+    } catch { /* try next mirror */ }
+  }
+  throw new Error("All Overpass mirrors failed or timed out.");
+}
+// ---------- helpers end ----------
+
+
+// REPLACE your function with this async version
+// Strict version: fence only if real OSM buildings >= MIN_BUILDINGS
+async function updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng, metaProfile }) {
+  // Clean old maps
   try { __routeCtrl && __routeCtrl.remove(); } catch {}
   try { __routeMap && __routeMap.remove(); } catch {}
   try { __fenceMap && __fenceMap.remove(); } catch {}
@@ -1934,7 +1988,6 @@ function updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng }) 
       attribution: '© OpenStreetMap contributors'
     });
 
-  // Icons
   const stationIcon = L.icon({
     iconUrl: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
     iconSize: [28, 28]
@@ -1947,110 +2000,80 @@ function updateTwoLeafletMaps({ reportLat, reportLng, stationLat, stationLng }) 
   // -----------------------
   // Left: Routing map
   // -----------------------
-  __routeMap = L.map('routeMap').setView([reportLat, reportLng], 13);
-  mkTile().addTo(__routeMap);
+  // --- inside updateTwoLeafletMaps ---
+__routeMap = L.map('routeMap').setView([reportLat, reportLng], 13);
+mkTile().addTo(__routeMap);
 
-  L.marker([stationLat, stationLng], { icon: stationIcon })
-    .addTo(__routeMap).bindPopup('Fire Station');
-  L.marker([reportLat, reportLng], { icon: reportIcon })
-    .addTo(__routeMap).bindPopup('Report Location');
+// show markers at original points (building + station)
+L.marker([stationLat, stationLng], { icon: stationIcon })
+  .addTo(__routeMap).bindPopup('Fire Station');
+L.marker([reportLat, reportLng], { icon: reportIcon })
+  .addTo(__routeMap).bindPopup('Report Location');
 
-  const routeBounds = L.latLngBounds(
-    [[stationLat, stationLng], [reportLat, reportLng]]
-  );
-  __routeMap.fitBounds(routeBounds.pad(0.2));
+// snap both ends to roads for routing
+const [snapStationLat, snapStationLng] = await snapToRoad(stationLat, stationLng);
+const [snapReportLat, snapReportLng]   = await snapToRoad(reportLat, reportLng);
 
-  const primaryStyle = { color: '#1976d2', weight: 6, opacity: 0.9 };
-  const altStyle     = { color: '#9e9e9e', weight: 5, opacity: 0.6, dashArray: '6,8' };
-
-  __routeCtrl = L.Routing.control({
-    waypoints: [
-      L.latLng(stationLat, stationLng),
-      L.latLng(reportLat, reportLng)
-    ],
-    router: L.Routing.osrmv1({
-      serviceUrl: 'https://router.project-osrm.org/route/v1',
-      profile: 'car'
-    }),
-    show: false,
-    addWaypoints: false,
-    draggableWaypoints: false,
-    routeWhileDragging: false,
-    fitSelectedRoutes: true,
-    showAlternatives: true,      // show multiple routes
-    altLineOptions: altStyle,
-    lineOptions: primaryStyle,
-    createMarker: () => null
-  }).addTo(__routeMap);
-
-  // Populate #routeInfo with summaries
-  __routeCtrl.on('routesfound', e => {
-    const info = document.getElementById('routeInfo');
-    if (!info) return;
-
-    const km = m => (m / 1000).toFixed(1);
-    const mins = s => Math.round(s / 60);
-
-    const bestTime = Math.min(...e.routes.map(r => r.summary.totalTime));
-    const bestDist = Math.min(...e.routes.map(r => r.summary.totalDistance));
-
-    info.innerHTML = e.routes.map((r, i) => {
-      const distKm = km(r.summary.totalDistance);
-      const timeMin = mins(r.summary.totalTime);
-
-      const tags = [];
-      if (r.summary.totalTime === bestTime) tags.push('Fastest');
-      if (r.summary.totalDistance === bestDist) tags.push('Shortest');
-
-      return `
-        <button data-idx="${i}"
-                class="route-pill"
-                style="display:inline-flex;align-items:center;gap:8px;margin:6px 8px 0 0;
-                       padding:6px 10px;border:1px solid #ddd;border-radius:999px;
-                       background:#fff;cursor:pointer;">
-          <span><strong>${distKm} km</strong></span>
-          <span>•</span>
-          <span>${timeMin} min</span>
-          ${tags.length ? `<span style="background:#eef5ff;color:#1976d2;padding:2px 6px;border-radius:999px;font-size:12px">${tags.join('/')}</span>` : ''}
-        </button>
-      `;
-    }).join('');
-
-    // Allow user to select a route
-    info.querySelectorAll('.route-pill').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = Number(btn.getAttribute('data-idx'));
-        __routeCtrl.setRoutes([ e.routes[idx], ...e.routes.filter((_,i)=>i!==idx) ]);
-      });
-    });
-  });
-
+__routeCtrl = L.Routing.control({
+  waypoints: [
+    L.latLng(snapStationLat, snapStationLng),
+    L.latLng(snapReportLat, snapReportLng)
+  ],
+  router: L.Routing.osrmv1({
+    serviceUrl: 'https://router.project-osrm.org/route/v1',
+    profile: 'car',
+    options: { geometries: 'geojson', overview: 'full' } // better geometry
+  }),
+  addWaypoints: false,
+  draggableWaypoints: false,
+  routeWhileDragging: false,
+  fitSelectedRoutes: true,
+  showAlternatives: false, // disable extra routes to avoid weird detours
+  lineOptions: { color: '#1976d2', weight: 6, opacity: 0.9 },
+  createMarker: () => null
+}).addTo(__routeMap);
   // -----------------------
-  // Right: Geofencing map
+  // Right: Fence map
   // -----------------------
   __fenceMap = L.map('fenceMap').setView([reportLat, reportLng], 17);
   mkTile().addTo(__fenceMap);
 
   L.marker([reportLat, reportLng], { icon: reportIcon })
     .addTo(__fenceMap).bindPopup('Report Location').openPopup();
-
-  L.circle([reportLat, reportLng], {
-    radius: 50,
-    color: 'red',
-    fillColor: '#f03',
-    fillOpacity: 0.25,
-    weight: 2
-  }).addTo(__fenceMap);
-
   L.marker([stationLat, stationLng], { icon: stationIcon })
     .addTo(__fenceMap).bindPopup('Fire Station');
 
-  const fenceBounds = L.latLngBounds([
-    [reportLat, reportLng],
-    [stationLat, stationLng]
-  ]);
-  __fenceMap.fitBounds(fenceBounds.pad(0.3));
+  // -----------------------
+  // Conditional Fencing (STRICT)
+  // -----------------------
+  const MIN_BUILDINGS         = 5;   // draw only if >= this many real buildings
+  const DEFAULT_RADIUS_METERS = 50;  // adjust as you like, e.g., 120/200/300
+
+  const radiusMeters = DEFAULT_RADIUS_METERS;
+
+  try {
+    const buildingCount = await countBuildingsWithin(reportLat, reportLng, radiusMeters);
+
+    if (buildingCount >= MIN_BUILDINGS) {
+      L.circle([reportLat, reportLng], {
+        radius: radiusMeters,
+        color: 'red',
+        fillColor: '#f03',
+        fillOpacity: 0.25,
+        weight: 2
+      })
+      .addTo(__fenceMap)
+      .bindPopup(`Geofence: ~${Math.round(radiusMeters)} m • ${buildingCount} buildings`);
+    } else {
+      // No fencing if fewer than MIN_BUILDINGS
+      // console.log(`No fencing – only ${buildingCount} buildings`);
+    }
+  } catch (e) {
+    // If Overpass fails, we skip fencing (no heuristic fallback).
+    console.warn("Fencing skipped (Overpass error):", e.message || e);
+  }
 }
+
 
 function closeLocationModal() {
   document.getElementById('locationModal').classList.add('hidden');
