@@ -889,74 +889,56 @@ function insertNewSmsRow(report) {
                                 // ==================================================
                 // Patch helpers
                 // ==================================================
-                function applyRealtimePatch(snapshot, reportType) {
-                const id = snapshot.key;
-                const patch = snapshot.val() || {};
-                const arr = reportType === 'fireReports' ? fireReports : otherEmergencyReports;
+              function applyRealtimePatch(snapshot, reportType) {
+  const id = snapshot.key;
+  const patch = snapshot.val() || {};
+  const arr = reportType === 'fireReports' ? fireReports : otherEmergencyReports;
 
-                // update in-memory array
-                const i = arr.findIndex(r => r.id === id);
-                if (i !== -1) arr[i] = { ...arr[i], ...patch, id };
+  const i = arr.findIndex(r => r.id === id);
+  if (i !== -1) arr[i] = { ...arr[i], ...patch, id };
 
-                // patch DOM row if it exists
-                const row = document.getElementById(`reportRow${id}`);
-                if (!row) return;
+  const row = document.getElementById(`reportRow${id}`);
+  if (!row) return;
 
+  row.setAttribute('data-report', JSON.stringify(arr[i] || patch));
 
+  if (typeof patch.status !== 'undefined') {
+    const statusCell = row.querySelector('.status');     // <- correct cell
+    if (statusCell) {
+      statusCell.textContent = patch.status;
+      statusCell.classList.remove('text-red-500','text-green-500','text-orange-500','text-blue-500','text-yellow-500');
+      const color = patch.status === 'Ongoing' ? 'red' :
+                    patch.status === 'Completed' ? 'green' :
+                    patch.status === 'Pending' ? 'orange' :
+                    patch.status === 'Received' ? 'blue' : 'yellow';
+      statusCell.classList.add(`text-${color}-500`);
+    }
+  }
 
-                // update data-report payload
-                row.setAttribute('data-report', JSON.stringify(arr[i] || patch));
+  if (reportType === 'fireReports') {
+    // Columns now: 0 #, 1 Location, 2 DateTime, 3 Status, 4 Action
+    if (typeof patch.exactLocation !== 'undefined')
+      row.children[1].textContent = patch.exactLocation || 'N/A';
 
-                // update status cell if status changed
-                if (typeof patch.status !== 'undefined') {
-                    const statusCell = row.querySelector('.status');
-                    if (statusCell) {
-                    statusCell.textContent = patch.status;
-                    // reset color classes
-                    statusCell.classList.remove(
-                        'text-red-500','text-green-500','text-orange-500','text-blue-500','text-yellow-500'
-                    );
-                    const color =
-                        patch.status === 'Ongoing'   ? 'red'    :
-                        patch.status === 'Completed' ? 'green'  :
-                        patch.status === 'Pending'   ? 'orange' :
-                        patch.status === 'Received'  ? 'blue'   : 'yellow';
-                    statusCell.classList.add(`text-${color}-500`);
-                    }
-                }
+    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+      const r = JSON.parse(row.getAttribute('data-report')) || {};
+      row.children[2].textContent = `${r.date || 'N/A'} ${to24h(r.reportTime) || r.reportTime || 'N/A'}`;
+    }
+  } else {
+    // Other Emergency columns: 0 #, 1 Location, 2 EmergencyType, 3 DateTime, 4 Status, 5 Action
+    if (typeof patch.exactLocation !== 'undefined')
+      row.children[1].textContent = patch.exactLocation || 'N/A';
 
-                // update other visible cells if relevant fields changed
-                if (reportType === 'fireReports') {
-                    if (typeof patch.exactLocation !== 'undefined')
-                    row.children[1].textContent = patch.exactLocation || 'N/A';
-                    if (typeof patch.alertLevel !== 'undefined')
-                    row.children[2].textContent = patch.alertLevel || 'Unknown';
-                    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-                    const r = JSON.parse(row.getAttribute('data-report')) || {};
-                    row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
-                    }
-                } else {
-                    if (typeof patch.exactLocation !== 'undefined')
-                    row.children[1].textContent = patch.exactLocation || 'N/A';
-                    if (typeof patch.emergencyType !== 'undefined')
-                    row.children[2].textContent = patch.emergencyType || 'N/A';
-                    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-                    const r = JSON.parse(row.getAttribute('data-report')) || {};
-                    row.children[3].textContent = `${r.date || 'N/A'} ${r.reportTime || 'N/A'}`;
-                    }
-                }
+    if (typeof patch.emergencyType !== 'undefined')
+      row.children[2].textContent = patch.emergencyType || 'N/A';
 
-                if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-                const r = JSON.parse(row.getAttribute('data-report')) || {};
-                row.children[3].textContent = `${r.date || 'N/A'} ${to24h(r.reportTime) || 'N/A'}`;
-                }
+    if (typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
+      const r = JSON.parse(row.getAttribute('data-report')) || {};
+      row.children[3].textContent = `${r.date || 'N/A'} ${to24h(r.reportTime) || r.reportTime || 'N/A'}`;
+    }
+  }
+}
 
-
-                // optional: re-sort if your ordering depends on date/time
-                // if (typeof patch.status !== 'undefined' || typeof patch.date !== 'undefined' || typeof patch.reportTime !== 'undefined') {
-                //   renderSortedReports(arr, reportType);
-                // }
-                }
 
                 function removeRow(id) {
                 const el = document.getElementById(`reportRow${id}`);
@@ -1590,302 +1572,421 @@ function filterSmsReportsTable() {
                     }
 
 
-            function capStatus(s) {
-  if (!s) return 'Unknown';
-  const t = String(s).toLowerCase();
-  return t === 'pending' ? 'Pending'
-       : t === 'ongoing' ? 'Ongoing'
-       : t === 'completed' ? 'Completed'
-       : t === 'received' ? 'Received'
-       : s;
-}
+                    function capStatus(s) {
+        if (!s) return 'Unknown';
+        const t = String(s).toLowerCase();
+        return t === 'pending' ? 'Pending'
+            : t === 'ongoing' ? 'Ongoing'
+            : t === 'completed' ? 'Completed'
+            : t === 'received' ? 'Received'
+            : s;
+        }
 
 
 
                 function closeDetailsModal() {
                 document.getElementById('detailsModal').classList.add('hidden');
                 }
-            // ==============================
-            // Messaging (station ResponseMessage + incident replies)
-            // ==============================
-
-            function stationNodesForReportType(reportType) {
-                const n = nodes();
-                if (!n) return null;
-                return {
-                    repliesBase: reportType === 'fireReports' ? `${n.fireReport}` : `${n.otherEmergency}`,
-                    stationBase: `${n.base}`,
-                    prefix: n.prefix
-                };
-            }
-
-            function repliesRef(incidentId, reportType) {
-                const nn = stationNodesForReportType(reportType);
-                if (!nn) return null;
-                return firebase.database().ref(`${nn.repliesBase}/${incidentId}/messages`);
-            }
-
-            function stationResponsesQuery(incidentId, reportType) {
-                const nn = stationNodesForReportType(reportType);
-                if (!nn) return null;
-                // {Prefix}FireStation/ResponseMessage filtered by incidentId
-                return firebase.database()
-                    .ref(`${nn.stationBase}/ResponseMessage`)
-                    .orderByChild('incidentId')
-                    .equalTo(incidentId);
-            }
-
-            function getFireStationNameByEmail(email, callback) {
-                try {
-                    const p = stationPrefixFromEmail(email);
-                    if (!p) return callback("Unknown Fire Station");
-                    return callback(`${p} Fire Station`);
-                } catch (_) {
-                    return callback("Unknown Fire Station");
-                }
-            }
-
-            let currentReportType = 'fireReports';
-            let liveListeners = []; // refs to detach on close
-
-            function openMessageModal(incidentId, reportType) {
-                currentReportType = reportType;
-
-                currentReport = reportType === 'fireReports'
-                    ? (fireReports || []).find(r => r.id === incidentId)
-                    : (otherEmergencyReports || []).find(r => r.id === incidentId);
-
-                if (!currentReport) return;
-
-                const modal = document.getElementById('fireMessageModal');
-                if (!modal) return;
-                modal.classList.remove('hidden');
-
-                document.getElementById('fireMessageIncidentIdValue').innerText = currentReport.id || '';
-                document.getElementById('fireMessageNameValue').innerText = currentReport.name || 'No Name Provided';
-                document.getElementById('fireMessageContactValue').innerText = currentReport.contact || 'N/A';
-                document.getElementById('fireMessageIncidentInput').value = currentReport.id || '';
-
-                try {
-                    getFireStationNameByEmail(SESSION_EMAIL, (n) => { currentReport.fireStationName = n || "Unknown Fire Station"; });
-                }
-                catch (_) { currentReport.fireStationName = "Unknown Fire Station"; }
-
-                // Reset the chat thread to prevent duplication
-                resetChatThread();
-
-                // Reset listeners to avoid duplication
-                resetListeners();
-
-                try {
-                    fetchThread(incidentId, reportType);
-                    subscribeThread(incidentId, reportType);
-                } catch (_) {}
-            }
-
-            function closeFireMessageModal() {
-                document.getElementById('fireMessageModal').classList.add('hidden');
-                // Detach listeners to prevent duplicates
-                resetListeners();
-            }
-
-            // Reset the chat thread (empty messages before fetching new ones)
-            function resetChatThread() {
-                const thread = document.getElementById('fireMessageThread');
-                thread.innerHTML = '';  // Clear the thread before rendering new messages
-            }
-
-            // Reset listeners to prevent stacking of subscriptions
-            function resetListeners() {
-                liveListeners.forEach(ref => {
-                    try {
-                        ref.off();  // Remove the Firebase listener
-                    } catch (_) {}
-                });
-                liveListeners = [];  // Clear the listeners array
-            }
-
-            let storedMessages = []; // Store messages after the first fetch
-
-            function fetchThread(incidentId, reportType) {
-                // If messages have already been fetched, use the stored messages
-                if (storedMessages.length > 0) {
-                    renderMessages(storedMessages);
-                    return;
-                }
-
-                const thread = document.getElementById('fireMessageThread');
-                thread.innerHTML = '';  // Clear the thread before fetching new messages
-
-                const qResp = stationResponsesQuery(incidentId, reportType);
-                const refRep = repliesRef(incidentId, reportType);
-
-                const pulls = [];
-
-                // Fetch station responses
-                if (qResp) {
-                    pulls.push(qResp.once('value').then(s => {
-                        const out = [];
-                        s.forEach(c => {
-                            const v = c.val() || {};
-                            if (v.responseMessage || v.imageBase64) {
-                                const ts = v.timestamp || Date.parse(`${v.responseDate || ''} ${v.responseTime || ''}`) || 0;
-                                out.push({ type: 'response', text: v.responseMessage || '', imageBase64: v.imageBase64 || '', audioBase64: v.audioBase64 || '', timestamp: ts });
-                            }
-                        });
-                        return out;
-                    }));
-                }
-
-                // Fetch citizen replies
-                if (refRep) {
-                    pulls.push(refRep.orderByChild('timestamp').once('value').then(s => {
-                        const out = [];
-                        s.forEach(c => {
-                            const v = c.val() || {};
-                            if (v.type && v.type.toLowerCase() === 'reply') {
-                                out.push({ type: 'reply', text: v.text || '', imageBase64: v.imageBase64 || '', audioBase64: v.audioBase64 || '', timestamp: v.timestamp || 0 });
-                            }
-                        });
-                        return out;
-                    }));
-                }
-
-                // Combine responses and replies, then sort by timestamp
-                Promise.all(pulls).then(chunks => {
-                    storedMessages = ([]).concat(...chunks);
-
-                    // Sort messages by timestamp (older messages at the top, newer at the bottom)
-                    storedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-                    // Render the sorted messages
-                    renderMessages(storedMessages);
-
-                    // Scroll to the bottom of the thread (new messages)
-                    thread.scrollTop = thread.scrollHeight;
-                });
-            }
-
-            // Function to render the stored messages in the correct order
-            function renderMessages(messages) {
-                const thread = document.getElementById('fireMessageThread');
-                thread.innerHTML = '';  // Clear the thread before rendering new messages
-
-                messages.forEach(renderBubble);
-            }
 
 
-            function subscribeThread(incidentId, reportType) {
-                // station responses
-                const qResp = stationResponsesQuery(incidentId, reportType);
-                if (qResp) {
-                    const ref = firebase.database().ref(qResp.ref.toString().replace(/^https?:\/\/[^/]+\/|^\/+/, '')); // normalize
-                    qResp.on('child_added', snap => {
-                        const v = snap.val() || {};
-                        if (!v) return;
-                        renderBubble({
-                            type: 'response',
-                            text: v.responseMessage || '',
-                            imageBase64: v.imageBase64 || '',
-                            audioBase64: v.audioBase64 || '',
-                            timestamp: v.timestamp || Date.parse(`${v.responseDate || ''} ${v.responseTime || ''}`) || Date.now()
-                        });
-                        const thread = document.getElementById('fireMessageThread');
-                        thread.scrollTop = thread.scrollHeight;
-                    });
-                    liveListeners.push(ref);
-                }
+          // ==============================
+// Messaging (station ResponseMessage + incident replies)
+// ==============================
 
-                // citizen replies
-                const repRef = repliesRef(incidentId, reportType);
-                if (repRef) {
-                    repRef.orderByChild('timestamp').on('child_added', snap => {
-                        const v = snap.val() || {};
-                        if ((v.type || '').toLowerCase() !== 'reply') return;
-                        renderBubble({
-                            type: 'reply',
-                            text: v.text || '',
-                            imageBase64: v.imageBase64 || '',
-                            audioBase64: v.audioBase64 || '',
-                            timestamp: v.timestamp || 0
-                        });
-                        const thread = document.getElementById('fireMessageThread');
-                        thread.scrollTop = thread.scrollHeight;
-                        if (!v.isRead) { snap.ref.child('isRead').set(true).catch(() => {}); }
-                    });
-                    liveListeners.push(repRef);
-                }
-            }
+function stationNodesForReportType(reportType) {
+  const n = nodes();
+  if (!n) return null;
+  return {
+    repliesBase: reportType === 'fireReports' ? `${n.fireReport}` : `${n.otherEmergency}`,
+    stationBase: `${n.base}`,
+    prefix: n.prefix
+  };
+}
 
-            function renderBubble(msg) {
-                const thread = document.getElementById('fireMessageThread');
-                const existingMessages = thread.querySelectorAll('.message');
+function repliesRef(incidentId, reportType) {
+  const nn = stationNodesForReportType(reportType);
+  if (!nn) return null;
+  return firebase.database().ref(`${nn.repliesBase}/${incidentId}/messages`);
+}
 
-                // Prevent duplicate messages by checking content
-                const messageExists = Array.from(existingMessages).some(existingMsg => {
-                    return existingMsg.innerHTML.includes(msg.text); // Check if the message content is already rendered
-                });
+function stationResponsesQuery(incidentId, reportType) {
+  const nn = stationNodesForReportType(reportType);
+  if (!nn) return null;
+  // {Prefix}FireStation/ResponseMessage filtered by incidentId
+  return firebase.database()
+    .ref(`${nn.stationBase}/ResponseMessage`)
+    .orderByChild('incidentId')
+    .equalTo(incidentId);
+}
 
-                if (messageExists) return; // Don't render if the message already exists
+function getFireStationNameByEmail(email, callback) {
+  try {
+    const p = stationPrefixFromEmail(email);
+    if (!p) return callback("Unknown Fire Station");
+    return callback(`${p} Fire Station`);
+  } catch (_) {
+    return callback("Unknown Fire Station");
+  }
+}
 
-                const el = document.createElement('div');
-                el.className = (msg.type === 'response')
-                    ? "message bg-blue-500 text-white p-4 rounded-lg my-2 max-w-xs ml-auto text-right" // Fire Station
-                    : "message bg-gray-300 text-black p-4 rounded-lg my-2 max-w-xs mr-auto text-left"; // User
+let currentReportType = 'fireReports';
+let liveListeners = [];       // refs/queries to detach on close
+let storedMessages = [];      // cached, grouped messages for current thread
 
-                let inner = '';
-                if (msg.text) inner += `<div>${escapeHtml(msg.text)}</div>`;
-                if (msg.imageBase64) inner += `<img src="data:image/jpeg;base64,${msg.imageBase64}" alt="Image" style="margin-top:8px; max-width:100%; border-radius:8px;" />`;
-                if (msg.audioBase64) inner += `<audio controls><source src="data:audio/mp4;base64,${msg.audioBase64}" type="audio/mp4" /></audio>`;
+// Keep track of the latest bubble so we can append media to it
+let __lastBubble = { type: null, ts: 0, el: null };
+const __GROUP_WINDOW_MS = 15000; // 15s window to "coalesce" parts of one message
 
-                const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
-                inner += `<small class="text-xs block mt-1">${ts.toLocaleString()}</small>`;
-                el.innerHTML = inner;
+function openMessageModal(incidentId, reportType) {
+  currentReportType = reportType;
 
-                thread.appendChild(el);
-            }
+  currentReport = reportType === 'fireReports'
+    ? (fireReports || []).find(r => r.id === incidentId)
+    : (otherEmergencyReports || []).find(r => r.id === incidentId);
 
-            function escapeHtml(s) {
-                return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-            }
+  if (!currentReport) return;
 
-            // Submit station reply
-            const fireForm = document.getElementById('fireMessageForm');
-            if (fireForm) {
-                fireForm.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    if (!currentReport) return;
+  const modal = document.getElementById('fireMessageModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
 
-                    const incidentId = document.getElementById('fireMessageIncidentInput').value;
-                    const responseMessage = document.getElementById('fireMessageInput').value.trim();
-                    if (!responseMessage) return;
+  document.getElementById('fireMessageIncidentIdValue').innerText = currentReport.id || '';
+  document.getElementById('fireMessageNameValue').innerText = currentReport.name || 'No Name Provided';
+  document.getElementById('fireMessageContactValue').innerText = currentReport.contact || 'N/A';
+  document.getElementById('fireMessageIncidentInput').value = currentReport.id || '';
 
-                    const nn = stationNodesForReportType(currentReportType);
-                    if (!nn) return;
+  try {
+    getFireStationNameByEmail(SESSION_EMAIL, (n) => { currentReport.fireStationName = n || "Unknown Fire Station"; });
+  }
+  catch (_) { currentReport.fireStationName = "Unknown Fire Station"; }
 
-                    // Pretty station name from your earlier code (set in openMessageModal)
-                    const fireStationName = currentReport.fireStationName || `${nn.prefix} Fire Station`;
+  // Reset the chat thread & listeners to prevent duplication
+  resetChatThread();
+  resetListeners();
+  storedMessages = [];
+  __lastBubble = { type: null, ts: 0, el: null };
 
-                    const payload = {
-                        prefix: nn.prefix,                        // "Mabini" / "LaFilipina" / "Canocotan"
-                        reportType: currentReportType,            // "fireReports" | "otherEmergency"
-                        incidentId: incidentId,
-                        reporterName: currentReport.name || '',
-                        contact: currentReport.contact || '',
-                        fireStationName: fireStationName,
-                        responseMessage: responseMessage
-                    };
+  try {
+    fetchThread(incidentId, reportType);
+    subscribeThread(incidentId, reportType);
+  } catch (_) {}
+}
 
-                    fetch('/store-response', {
-                        method: 'POST',
-                        headers: {'Content-Type':'application/json','X-CSRF-TOKEN': '{{ csrf_token() }}'},
-                        body: JSON.stringify(payload)
-                    })
-                    .then(r => r.json())
-                    .then(() => { document.getElementById('fireMessageInput').value = ''; })
-                    .catch(console.error);
-                });
-            }
+function closeFireMessageModal() {
+  document.getElementById('fireMessageModal').classList.add('hidden');
+  // Detach listeners to prevent duplicates
+  resetListeners();
+}
+
+// Reset the chat thread (empty messages before fetching new ones)
+function resetChatThread() {
+  const thread = document.getElementById('fireMessageThread');
+  thread.innerHTML = '';  // Clear the thread before rendering new messages
+}
+
+// Reset listeners to prevent stacking of subscriptions
+function resetListeners() {
+  liveListeners.forEach(ref => {
+    try { ref.off?.(); } catch (_) {}
+  });
+  liveListeners = [];  // Clear the listeners array
+}
+
+/* ---------- Base64 utilities + MIME guessing ---------- */
+function cleanB64(b64) {
+  if (!b64) return "";
+  return String(b64).replace(/\s+/g, "").replace(/[^A-Za-z0-9+/=]/g, "");
+}
+
+// Heuristic: decide the right MIME for images; default to jpeg
+function guessImageMime(b64) {
+  if (!b64) return "image/jpeg";
+  const head = b64.slice(0, 12);
+  // PNG starts with iVBORw0KGgo
+  if (/^iVBOR/.test(head)) return "image/png";
+  // GIF starts with R0lGOD (Gif87a/89a)
+  if (/^R0lGOD/.test(head)) return "image/gif";
+  // WebP often starts with UklGR / (best-effort)
+  if (/^(UklGR|R0lGU)/.test(head)) return "image/webp";
+  // JPEG typically starts with /9j/ or similar
+  return "image/jpeg";
+}
+
+// Some devices record m4a/aac; use mp4/m4a where browsers are happiest
+function guessAudioMime() {
+  return "audio/mp4"; // m4a container
+}
+
+/* ---------- Group adjacent parts into single bubbles (initial load) ---------- */
+function groupMessages(parts) {
+  if (!Array.isArray(parts) || !parts.length) return [];
+  const out = [];
+  const WIN = __GROUP_WINDOW_MS;
+
+  let bucket = null;
+  for (const m of parts) {
+    const ts = Number(m.timestamp || 0);
+
+    if (!bucket) {
+      bucket = { type: m.type, timestamp: ts, text: "", imageBase64: "", audioBase64: "" };
+    }
+
+    const sameSender  = bucket.type === m.type;
+    const closeInTime = Math.abs(ts - bucket.timestamp) <= WIN;
+
+    if (sameSender && closeInTime) {
+      if (m.text)        bucket.text        = bucket.text ? (bucket.text + "\n" + m.text) : m.text;
+      if (m.imageBase64) bucket.imageBase64 = bucket.imageBase64 || m.imageBase64;
+      if (m.audioBase64) bucket.audioBase64 = bucket.audioBase64 || m.audioBase64;
+      bucket.timestamp = Math.max(bucket.timestamp, ts);
+    } else {
+      out.push(bucket);
+      bucket = { type: m.type, timestamp: ts, text: m.text || "", imageBase64: m.imageBase64 || "", audioBase64: m.audioBase64 || "" };
+    }
+  }
+  if (bucket) out.push(bucket);
+  return out;
+}
+
+/* ---------- Fetch (initial) thread ---------- */
+function fetchThread(incidentId, reportType) {
+  const thread = document.getElementById('fireMessageThread');
+  thread.innerHTML = '';
+
+  const qResp = stationResponsesQuery(incidentId, reportType);
+  const refRep = repliesRef(incidentId, reportType);
+
+  const pulls = [];
+
+  // Station responses
+  if (qResp) {
+    pulls.push(
+      qResp.once('value').then(snap => {
+        const out = [];
+        snap.forEach(c => {
+          const v = c.val() || {};
+          if (v.responseMessage || v.imageBase64 || v.audioBase64) {
+            const ts = v.timestamp || Date.parse(`${v.responseDate || ''} ${v.responseTime || ''}`) || 0;
+            out.push({
+              type: 'response',
+              text: v.responseMessage || '',
+              imageBase64: v.imageBase64 || '',
+              audioBase64: v.audioBase64 || '',
+              timestamp: ts
+            });
+          }
+        });
+        return out;
+      })
+    );
+  }
+
+  // Citizen replies
+  if (refRep) {
+    pulls.push(
+      refRep.orderByChild('timestamp').once('value').then(snap => {
+        const out = [];
+        snap.forEach(c => {
+          const v = c.val() || {};
+          if ((v.type || '').toLowerCase() === 'reply') {
+            out.push({
+              type: 'reply',
+              text: v.text || '',
+              imageBase64: v.imageBase64 || '',
+              audioBase64: v.audioBase64 || '',
+              timestamp: v.timestamp || 0
+            });
+          }
+        });
+        return out;
+      })
+    );
+  }
+
+  Promise.all(pulls).then(chunks => {
+    storedMessages = ([]).concat(...chunks);
+    // Sort asc (older → newer), then group
+    storedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    storedMessages = groupMessages(storedMessages);
+    renderMessages(storedMessages);
+    thread.scrollTop = thread.scrollHeight;
+  });
+}
+
+/* ---------- Render (bulk) ---------- */
+function renderMessages(messages) {
+  const thread = document.getElementById('fireMessageThread');
+  thread.innerHTML = '';  // Clear the thread before rendering new messages
+  __lastBubble = { type: null, ts: 0, el: null };
+  messages.forEach(renderBubble);
+}
+
+/* ---------- Live updates: coalesce on the fly ---------- */
+function subscribeThread(incidentId, reportType) {
+  // Station responses
+  const qResp = stationResponsesQuery(incidentId, reportType);
+  if (qResp) {
+    const respRef = firebase.database().ref(qResp.ref.toString().replace(/^https?:\/\/[^/]+\/|^\/+/, ''));
+    qResp.on('child_added', snap => {
+      const v = snap.val() || {};
+      if (!v) return;
+      renderBubble({
+        type: 'response',
+        text: v.responseMessage || '',
+        imageBase64: v.imageBase64 || '',
+        audioBase64: v.audioBase64 || '',
+        timestamp: v.timestamp || Date.parse(`${v.responseDate || ''} ${v.responseTime || ''}`) || Date.now()
+      });
+      const thread = document.getElementById('fireMessageThread');
+      thread.scrollTop = thread.scrollHeight;
+    });
+    liveListeners.push(qResp);
+    liveListeners.push(respRef);
+  }
+
+  // Citizen replies
+  const repRef = repliesRef(incidentId, reportType);
+  if (repRef) {
+    const q = repRef.orderByChild('timestamp');
+    q.on('child_added', snap => {
+      const v = snap.val() || {};
+      if ((v.type || '').toLowerCase() !== 'reply') return;
+      renderBubble({
+        type: 'reply',
+        text: v.text || '',
+        imageBase64: v.imageBase64 || '',
+        audioBase64: v.audioBase64 || '',
+        timestamp: v.timestamp || 0
+      });
+      const thread = document.getElementById('fireMessageThread');
+      thread.scrollTop = thread.scrollHeight;
+      if (!v.isRead) { snap.ref.child('isRead').set(true).catch(() => {}); }
+    });
+    liveListeners.push(q);
+  }
+}
+
+/* ---------- Bubble rendering with live coalescing ---------- */
+function renderBubble(msg) {
+  const thread = document.getElementById('fireMessageThread');
+  const nowTs = msg.timestamp ? Number(msg.timestamp) : Date.now();
+
+  // Try to append if same sender + within the grouping window
+  const canAppend =
+    __lastBubble.el &&
+    __lastBubble.type === msg.type &&
+    (nowTs - __lastBubble.ts) <= __GROUP_WINDOW_MS;
+
+  // Build the block to add (text + media present in this payload)
+  const block = document.createElement('div');
+
+  if (msg.text) {
+    const textDiv = document.createElement('div');
+    textDiv.textContent = msg.text;
+    block.appendChild(textDiv);
+  }
+
+  const rawImg = cleanB64(msg.imageBase64 || "");
+  if (rawImg) {
+    const img = document.createElement('img');
+    img.style.marginTop = '8px';
+    img.style.maxWidth  = '100%';
+    img.style.borderRadius = '8px';
+    img.src = `data:${guessImageMime(rawImg)};base64,${rawImg}`;
+    img.alt = "Image";
+    block.appendChild(img);
+  }
+
+  const rawAud = cleanB64(msg.audioBase64 || "");
+  if (rawAud) {
+    const aud = document.createElement('audio');
+    aud.controls = true;
+    aud.style.display = 'block';
+    aud.style.marginTop = '8px';
+    aud.src = `data:${guessAudioMime(rawAud)};base64,${rawAud}`;
+    block.appendChild(aud);
+  }
+
+  if (!block.childNodes.length) return;
+
+  if (canAppend) {
+    // Append inside the content area of the last bubble (before its timestamp)
+    const content = __lastBubble.el.querySelector('.bubble-content');
+    const tsNode  = __lastBubble.el.querySelector('.bubble-ts');
+    content.insertBefore(block, tsNode);
+    __lastBubble.ts = nowTs; // extend window a bit
+  } else {
+    // Create a new bubble
+    const shell = document.createElement('div');
+    shell.className = (msg.type === 'response')
+      ? "message bg-blue-500 text-white p-4 rounded-lg my-2 max-w-xs ml-auto text-right"
+      : "message bg-gray-300 text-black p-4 rounded-lg my-2 max-w-xs mr-auto text-left";
+
+    // Content wrapper (so we can insert before timestamp later)
+    const content = document.createElement('div');
+    content.className = 'bubble-content';
+    content.appendChild(block);
+
+    // Timestamp (always last)
+    const small = document.createElement('small');
+    small.className = 'bubble-ts text-xs block mt-1 opacity-80';
+    small.textContent = new Date(nowTs).toLocaleString();
+
+    shell.appendChild(content);
+    shell.appendChild(small);
+    thread.appendChild(shell);
+
+    __lastBubble = { type: msg.type, ts: nowTs, el: shell };
+  }
+
+  // Always scroll to latest
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+// Submit station reply
+const fireForm = document.getElementById('fireMessageForm');
+if (fireForm) {
+  fireForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!currentReport) return;
+
+    const incidentId = document.getElementById('fireMessageIncidentInput').value;
+    const responseMessage = document.getElementById('fireMessageInput').value.trim();
+    if (!responseMessage) return;
+
+    const nn = stationNodesForReportType(currentReportType);
+    if (!nn) return;
+
+    // Pretty station name from your earlier code (set in openMessageModal)
+    const fireStationName = currentReport.fireStationName || `${nn.prefix} Fire Station`;
+
+    const payload = {
+      prefix: nn.prefix,                        // "Mabini" / "LaFilipina" / "Canocotan"
+      reportType: currentReportType,            // "fireReports" | "otherEmergency"
+      incidentId: incidentId,
+      reporterName: currentReport.name || '',
+      contact: currentReport.contact || '',
+      fireStationName: fireStationName,
+      responseMessage: responseMessage
+    };
+
+    fetch('/store-response', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRF-TOKEN': '{{ csrf_token() }}'},
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(() => { document.getElementById('fireMessageInput').value = ''; })
+    .catch(console.error);
+  });
+}
+
+
+
 
 
 // helper: snap coords to nearest road
