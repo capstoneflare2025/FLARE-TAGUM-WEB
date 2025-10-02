@@ -64,209 +64,50 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
 <script>
+/* =========================
+ * Globals
+ * ========================= */
 let canocotanRef, laFilipinaRef, mabiniRef, responseMessageRef;
 let fireSound, emergencySound;
-const shownReplyToasts = new Set();
 const activeToasts = new Map();
 
-document.addEventListener('DOMContentLoaded', function () {
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCrjSyOI-qzCaJptEkWiRfEuaG28ugTmdE",
-  authDomain: "capstone-flare-2025.firebaseapp.com",
-  databaseURL: "https://capstone-flare-2025-default-rtdb.firebaseio.com",
-  projectId: "capstone-flare-2025",
-  storageBucket: "capstone-flare-2025.firebasestorage.app",
-  messagingSenderId: "685814202928",
-  appId: "1:685814202928:web:9b484f04625e5870c9a3f5",
-  measurementId: "G-QZ8P5VLHF2"
-};
-
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-
-  // Station -> Profile node names
-  const stationProfile = {
-    CanocotanFireStation: 'CanocotanProfile',
-    LaFilipinaFireStation: 'LaFilipinaProfile',
-    MabiniFireStation: 'MabiniProfile'
-  };
-
-  canocotanRef       = database.ref('CanocotanFireStation');
-  laFilipinaRef      = database.ref('LaFilipinaFireStation');
-  mabiniRef          = database.ref('MabiniFireStation');
-
-  const userEmail = "{{ session('firebase_user_email') }}";
-
-  fireSound = new Audio("{{ asset('sound/alert.mp3') }}");
-  emergencySound = new Audio("{{ asset('sound/emergency.mp3') }}");
-  fireSound.preload = emergencySound.preload = "auto";
-
-  document.addEventListener('click', function unlockAudio() {
-    fireSound.play().catch(() => {});
-    emergencySound.play().catch(() => {});
-    fireSound.pause(); emergencySound.pause();
-    fireSound.currentTime = emergencySound.currentTime = 0;
-    document.removeEventListener('click', unlockAudio);
-  });
-
-  if (userEmail) {
-    checkUserInFireStation('CanocotanFireStation', userEmail);
-    checkUserInFireStation('LaFilipinaFireStation', userEmail);
-    checkUserInFireStation('MabiniFireStation', userEmail);
-  }
-
-  function checkUserInFireStation(station, email) {
-    const profileKey = stationProfile[station];
-    database.ref(`${station}/${profileKey}`).once('value').then(snap => {
-      let data = snap.val();
-      if (!data) return tryOldRoot();
-      const em = (data.email || '').toLowerCase();
-      if (em && em === email.toLowerCase()) {
-        document.getElementById('station-name').innerText = data.name || station;
-      }
-    }).catch(tryOldRoot);
-
-    function tryOldRoot() {
-      database.ref(station).once('value').then(snap => {
-        const data = snap.val() || {};
-        const em = (data.email || '').toLowerCase();
-        if (em && em === email.toLowerCase()) {
-          document.getElementById('station-name').innerText = data.name || station;
-        }
-      }).catch(() => {});
-    }
-  }
-
-  document.querySelectorAll('.menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
+/* =========================
+ * Helpers: Priming
+ * ========================= */
+// Prime the last child key so the first live event won't toast old data
+async function primeLastKey(ref, storageKey) {
+  try {
+    const snap = await ref.limitToLast(1).once('value');
+    snap.forEach(child => {
+      localStorage.setItem(storageKey, child.key);
     });
-  });
-
-  // Station-scoped paths for reports and messages
-  function getNodes(email) {
-    email = (email || "").toLowerCase();
-
-    if (email.includes("mabini123@gmail.com")) {
-      const base = "MabiniFireStation";
-      return {
-        base,
-        fire: `${base}/MabiniFireReport`,
-        emergency: `${base}/MabiniOtherEmergency`,
-        reply: `${base}/ReplyMessage`,
-        response: `${base}/ResponseMessage`,
-      };
-    }
-    if (email.includes("canocotan123@gmail.com")) {
-      const base = "CanocotanFireStation";
-      return {
-        base,
-        fire: `${base}/CanocotanFireReport`,
-        emergency: `${base}/CanocotanOtherEmergency`,
-        reply: `${base}/ReplyMessage`,
-        response: `${base}/ResponseMessage`,
-      };
-    }
-    if (email.includes("lafilipina123@gmail.com")) {
-      const base = "LaFilipinaFireStation";
-      return {
-        base,
-        fire: `${base}/LaFilipinaFireReport`,
-        emergency: `${base}/LaFilipinaOtherEmergency`,
-        reply: `${base}/ReplyMessage`,
-        response: `${base}/ResponseMessage`,
-      };
-    }
-    return null;
+  } catch (e) {
+    console.warn('primeLastKey failed:', storageKey, e);
   }
+}
 
-  const nodes = getNodes(userEmail);
-  if (!nodes) return;
-
-  // Optional handle if needed elsewhere
-  responseMessageRef = database.ref(nodes.response);
-
-  // Listeners for latest Fire and Other Emergency reports
-  firebase.database().ref(nodes.fire).limitToLast(1).on('child_added', snapshot => {
-    const newReport = snapshot.val();
-    const newId = snapshot.key;
-    if (localStorage.getItem('last_fire_id') !== newId) {
-      localStorage.setItem('last_fire_id', newId);
-      newReport.id = newId;
-      insertNewReportRow(newReport, 'fireReports');
-      showQueuedToast({ id: newId, type: 'fireReports', reporterName: newReport.name || 'Unknown', message: "Fire Report! A new incident has been added.", sound: fireSound });
-    }
-  });
-
-  firebase.database().ref(nodes.emergency).limitToLast(1).on('child_added', snapshot => {
-    const newReport = snapshot.val();
-    const newId = snapshot.key;
-    if (localStorage.getItem('last_emergency_id') !== newId) {
-      localStorage.setItem('last_emergency_id', newId);
-      newReport.id = newId;
-      insertNewReportRow(newReport, 'otherEmergency');
-      showQueuedToast({ id: newId, type: 'otherEmergency', reporterName: newReport.name || 'Unknown', message: "Emergency Report! A new incident has been added.", sound: emergencySound });
-    }
-  });
-
-// Listen for new replies inside each Fire Report
-firebase.database().ref(nodes.fire).on('child_added', reportSnap => {
-  const incidentId = reportSnap.key;
-  const reportData = reportSnap.val();
-  // Watch the messages node for this incident
-  reportSnap.ref.child('messages').limitToLast(1).on('child_added', msgSnap => {
-    const msg = msgSnap.val();
-    if (!msg || (msg.type || '').toLowerCase() !== 'reply') return;
-    if (localStorage.getItem('last_reply_id') === msgSnap.key) return;
-
-    localStorage.setItem('last_reply_id', msgSnap.key);
-    const name = reportData?.name || msg.reporterName || 'Unknown';
-    showQueuedToast({
-      id: incidentId,
-      type: 'message',
-      reporterName: name,
-      message: "New Message Received. Tap to view the chat.",
-      sound: null
+// For replies, prime per-incident so opening the page doesn’t show the latest old reply
+async function primeLastReplyKey(messagesRef, storageKey) {
+  try {
+    const snap = await messagesRef.limitToLast(1).once('value');
+    snap.forEach(child => {
+      localStorage.setItem(storageKey, child.key);
     });
-  });
-});
+  } catch (e) {
+    console.warn('primeLastReplyKey failed:', storageKey, e);
+  }
+}
 
-// Listen for new replies inside each Other Emergency Report
-firebase.database().ref(nodes.emergency).on('child_added', reportSnap => {
-  const incidentId = reportSnap.key;
-  const reportData = reportSnap.val();
-  reportSnap.ref.child('messages').limitToLast(1).on('child_added', msgSnap => {
-    const msg = msgSnap.val();
-    if (!msg || (msg.type || '').toLowerCase() !== 'reply') return;
-    if (localStorage.getItem('last_reply_id') === msgSnap.key) return;
-
-    localStorage.setItem('last_reply_id', msgSnap.key);
-    const name = reportData?.name || msg.reporterName || 'Unknown';
-    showQueuedToast({
-      id: incidentId,
-      type: 'message',
-      reporterName: name,
-      message: "New Message Received. Tap to view the chat.",
-      sound: null
-    });
-  });
-});
-
-
-  // Response status changes (station-scoped)
-  firebase.database().ref(nodes.response).on('child_changed', function(snapshot) {
-    const updatedReport = snapshot.val();
-    updateTableStatus(updatedReport.id, updatedReport.status);
-  });
-
-});
-
-// Toasts
+/* =========================
+ * Toasts
+ * ========================= */
 function showQueuedToast({ id, type, reporterName = 'Unknown', message = '', sound = null }) {
+  if (!id) return;
   if (activeToasts.has(id)) return;
+
   const toastContainer = document.getElementById("toastContainer");
+  if (!toastContainer) return;
+
   const toast = document.createElement("div");
   toast.className = "toast flex justify-between items-center gap-4 animate-fade-in-down";
   toast.innerHTML = `
@@ -276,7 +117,9 @@ function showQueuedToast({ id, type, reporterName = 'Unknown', message = '', sou
     <button class="text-white font-bold text-sm hover:opacity-75" onclick="handleViewIncident('${id}', '${type}')">View</button>
   `;
   toastContainer.appendChild(toast);
-  sound?.play?.().catch(() => {});
+
+  try { sound?.play?.().catch(() => {}); } catch {}
+
   const timeout = setTimeout(() => removeToast(id), 10000);
   activeToasts.set(id, { element: toast, timeout });
 }
@@ -290,39 +133,289 @@ function removeToast(id) {
   activeToasts.delete(id);
 }
 
-function handleViewIncident(id, type) {
+/* =========================
+ * Cross-page safe navigation
+ * ========================= */
+function handleViewIncident(uniqueId, type) {
+  // uniqueId is `${base}|${id}` or `${base}|${id}|msg`
+  const parts = String(uniqueId).split('|');
+  const id = parts.length >= 2 ? parts[1] : uniqueId;
   if (!id || !type) return;
+
   const row = document.getElementById(`reportRow${id}`);
   const detectedType = row?.getAttribute('data-type') || type;
 
   if (type === 'message') {
-    let report = null;
-    if (row) {
-      const reportData = row.getAttribute('data-report');
-      if (reportData) {
-        try { report = JSON.parse(reportData); } catch {}
-      }
+    // If chat modal exists on this page, open it; else deep-link
+    if (typeof openMessageModal === 'function') {
+      const guessedType = (detectedType === 'otherEmergency') ? 'otherEmergency' : 'fireReports';
+      openMessageModal(id, guessedType);
+    } else {
+      window.location.href = `/app/incident-reports?incidentId=${encodeURIComponent(id)}&type=${encodeURIComponent('fireReports')}&modal=details`;
     }
-    if (!report) {
-      report = { id, name: "Unknown", contact: "N/A", fireStationName: "Unknown Fire Station" };
-    }
-    const exists = (detectedType === 'fireReports' ? fireReports : otherEmergencyReports).some(r => r.id === id);
-    if (!exists) {
-      if (detectedType === 'fireReports') fireReports.push(report);
-      else if (detectedType === 'otherEmergency') otherEmergencyReports.push(report);
-    }
-    openMessageModal(id, detectedType);
     return;
   }
 
-  if (row) {
+  if (typeof openDetailsModal === 'function' && row) {
     openDetailsModal(id, detectedType);
   } else {
     const url = `/app/incident-reports?incidentId=${encodeURIComponent(id)}&type=${encodeURIComponent(detectedType)}&modal=details`;
     window.location.href = url;
   }
 }
+
+/* =========================
+ * Main
+ * ========================= */
+document.addEventListener('DOMContentLoaded', async function () {
+  const firebaseConfig = {
+    apiKey: "AIzaSyCrjSyOI-qzCaJptEkWiRfEuaG28ugTmdE",
+    authDomain: "capstone-flare-2025.firebaseapp.com",
+    databaseURL: "https://capstone-flare-2025-default-rtdb.firebaseio.com",
+    projectId: "capstone-flare-2025",
+    storageBucket: "capstone-flare-2025.firebasestorage.app",
+    messagingSenderId: "685814202928",
+    appId: "1:685814202928:web:9b484f04625e5870c9a3f5",
+    measurementId: "G-QZ8P5VLHF2"
+  };
+
+  // ✅ Guard Firebase init (prevents crash when navigating between pages)
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const database = firebase.database();
+
+  // ✅ Singleton guard so listeners aren’t registered multiple times
+  if (window.__flareRealtimeStarted) return;
+  window.__flareRealtimeStarted = true;
+
+  // Roots (for fallback, profile lookups, etc.)
+  canocotanRef  = database.ref('CanocotanFireStation');
+  laFilipinaRef = database.ref('LaFilipinaFireStation');
+  mabiniRef     = database.ref('MabiniFireStation');
+
+  const sessionEmail = ("{{ session('firebase_user_email') }}" || "").toLowerCase();
+
+  // Sounds
+  fireSound = new Audio("{{ asset('sound/alert.mp3') }}");
+  emergencySound = new Audio("{{ asset('sound/emergency.mp3') }}");
+  fireSound.preload = emergencySound.preload = "auto";
+
+  // Unlock audio on first gesture
+  document.addEventListener('click', function unlockAudio() {
+    try { fireSound.play().catch(() => {}); emergencySound.play().catch(() => {}); } catch {}
+    fireSound.pause(); emergencySound.pause();
+    fireSound.currentTime = 0; emergencySound.currentTime = 0;
+    document.removeEventListener('click', unlockAudio);
+  });
+
+  // ===== Keep your Fire Station name display intact =====
+  const stationProfileKey = {
+    CanocotanFireStation: 'CanocotanProfile',
+    LaFilipinaFireStation: 'LaFilipinaProfile',
+    MabiniFireStation: 'MabiniProfile'
+  };
+
+  function checkUserInFireStation(station, email) {
+    const profileKey = stationProfileKey[station];
+    database.ref(`${station}/${profileKey}`).once('value').then(snap => {
+      let data = snap.val();
+      if (!data) return tryOldRoot();
+      const em = (data.email || '').toLowerCase();
+      if (em && em === email.toLowerCase()) {
+        const el = document.getElementById('station-name');
+        if (el) el.innerText = data.name || station;
+      }
+    }).catch(tryOldRoot);
+
+    function tryOldRoot() {
+      database.ref(station).once('value').then(snap => {
+        const data = snap.val() || {};
+        const em = (data.email || '').toLowerCase();
+        if (em && em === email.toLowerCase()) {
+          const el = document.getElementById('station-name');
+          if (el) el.innerText = data.name || station;
+        }
+      }).catch(() => {});
+    }
+  }
+
+  if (sessionEmail) {
+    checkUserInFireStation('CanocotanFireStation', sessionEmail);
+    checkUserInFireStation('LaFilipinaFireStation', sessionEmail);
+    checkUserInFireStation('MabiniFireStation', sessionEmail);
+  }
+  // ======================================================
+
+  // Menu active state (optional)
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Email -> station nodes
+  function nodesFor(base, prefix) {
+    return {
+      base,
+      fire: `${base}/${prefix}FireReport`,
+      emergency: `${base}/${prefix}OtherEmergency`,
+      response: `${base}/ResponseMessage`
+    };
+  }
+
+  function getNodesByEmail(email) {
+    const e = (email || "").toLowerCase();
+    if (e.includes("mabini123@gmail.com"))     return nodesFor("MabiniFireStation", "Mabini");
+    if (e.includes("canocotan123@gmail.com"))  return nodesFor("CanocotanFireStation", "Canocotan");
+    if (e.includes("lafilipina123@gmail.com")) return nodesFor("LaFilipinaFireStation", "LaFilipina");
+    return null;
+  }
+
+  let nodes = getNodesByEmail(sessionEmail);
+
+  // ✅ Fallback: attach listeners to ALL 3 stations if session email is missing/mismatched
+  const nodeBundles = nodes ? [nodes] : [
+    nodesFor("MabiniFireStation", "Mabini"),
+    nodesFor("CanocotanFireStation", "Canocotan"),
+    nodesFor("LaFilipinaFireStation", "LaFilipina"),
+  ];
+
+  // Prime all station bundles BEFORE attaching listeners (prevents showing last historical)
+  for (const n of nodeBundles) {
+    await primeLastKey(firebase.database().ref(n.fire),      `last_fire_id_${n.base}`);
+    await primeLastKey(firebase.database().ref(n.emergency), `last_emergency_id_${n.base}`);
+  }
+
+  // Attach listeners
+  nodeBundles.forEach(n => attachListenersFor(n));
+
+  // Expose responseMessageRef if needed elsewhere
+  responseMessageRef = database.ref((nodeBundles[0] || {}).response);
+
+  /* =========================
+   * Listener bundle
+   * ========================= */
+  function attachListenersFor(n) {
+    // FIRE — toast first, then optional page update
+    firebase.database().ref(n.fire).limitToLast(1).on('child_added', snap => {
+      const v = snap.val(); const id = snap.key;
+      if (!v || !id) return;
+
+      const seenKey = `last_fire_id_${n.base}`;
+      if (localStorage.getItem(seenKey) === id) return;  // ignore primed last
+      localStorage.setItem(seenKey, id);
+
+      v.id = id;
+
+      showQueuedToast({
+        id: `${n.base}|${id}`,
+        type: 'fireReports',
+        reporterName: v.name || 'Unknown',
+        message: "Fire Report! A new incident has been added.",
+        sound: fireSound
+      });
+
+      // Optional page updates (guarded so they don’t block the toast)
+      try {
+        if (typeof insertNewReportRow === 'function') insertNewReportRow(v, 'fireReports');
+        if (typeof renderAllReports === 'function')   renderAllReports();
+      } catch(e){ console.warn('[fire optional update]', e); }
+    });
+
+    // OTHER EMERGENCY — toast first, then optional update
+    firebase.database().ref(n.emergency).limitToLast(1).on('child_added', snap => {
+      const v = snap.val(); const id = snap.key;
+      if (!v || !id) return;
+
+      const seenKey = `last_emergency_id_${n.base}`;
+      if (localStorage.getItem(seenKey) === id) return;  // ignore primed last
+      localStorage.setItem(seenKey, id);
+
+      v.id = id;
+
+      showQueuedToast({
+        id: `${n.base}|${id}`,
+        type: 'otherEmergency',
+        reporterName: v.name || 'Unknown',
+        message: "Emergency Report! A new incident has been added.",
+        sound: emergencySound
+      });
+
+      try {
+        if (typeof insertNewReportRow === 'function') insertNewReportRow(v, 'otherEmergency');
+        if (typeof renderAllReports === 'function')   renderAllReports();
+      } catch(e){ console.warn('[other optional update]', e); }
+    });
+
+    // Replies under FIRE — prime per incident, then listen
+    firebase.database().ref(n.fire).on('child_added', async reportSnap => {
+      const incidentId = reportSnap.key;
+      const reportData = reportSnap.val();
+      const msgsRef  = reportSnap.ref.child('messages');
+      const seenKey  = `last_reply_id_${n.base}_${incidentId}`;
+
+      // Prime reply so existing last reply won't toast on first load
+      await primeLastReplyKey(msgsRef, seenKey);
+
+      msgsRef.limitToLast(1).on('child_added', msgSnap => {
+        const msg = msgSnap.val();
+        if (!msg || (String(msg.type||'').toLowerCase() !== 'reply')) return;
+
+        if (localStorage.getItem(seenKey) === msgSnap.key) return; // ignore primed one
+        localStorage.setItem(seenKey, msgSnap.key);
+
+        showQueuedToast({
+          id: `${n.base}|${incidentId}|msg`,
+          type: 'message',
+          reporterName: reportData?.name || msg.reporterName || 'Unknown',
+          message: "New Message Received. Tap to view the chat.",
+          sound: null
+        });
+      });
+    });
+
+    // Replies under OTHER — prime per incident, then listen
+    firebase.database().ref(n.emergency).on('child_added', async reportSnap => {
+      const incidentId = reportSnap.key;
+      const reportData = reportSnap.val();
+      const msgsRef = reportSnap.ref.child('messages');
+      const seenKey = `last_reply_id_${n.base}_${incidentId}`;
+
+      await primeLastReplyKey(msgsRef, seenKey);
+
+      msgsRef.limitToLast(1).on('child_added', msgSnap => {
+        const msg = msgSnap.val();
+        if (!msg || (String(msg.type||'').toLowerCase() !== 'reply')) return;
+
+        if (localStorage.getItem(seenKey) === msgSnap.key) return; // ignore primed one
+        localStorage.setItem(seenKey, msgSnap.key);
+
+        showQueuedToast({
+          id: `${n.base}|${incidentId}|msg2`,
+          type: 'message',
+          reporterName: reportData?.name || msg.reporterName || 'Unknown',
+          message: "New Message Received. Tap to view the chat.",
+          sound: null
+        });
+      });
+    });
+
+    // Response status changes — guard optional table updater
+    firebase.database().ref(n.response).on('child_changed', snapshot => {
+      const updatedReport = snapshot.val() || {};
+      try {
+        if (typeof updateTableStatus === 'function') {
+          updateTableStatus(updatedReport.id, updatedReport.status);
+        }
+      } catch (e) { console.warn('[updateTableStatus failed]', e); }
+    });
+  }
+
+}); // DOMContentLoaded
 </script>
+
 
 @stack('scripts')
 
