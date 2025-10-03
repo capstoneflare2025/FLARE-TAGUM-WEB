@@ -37,7 +37,7 @@
         .main-content{ margin-left: 260px; padding: 20px; margin-top: 20px; }
     </style>
 </head>
-<body>
+<body resetReloadTimer()>
 
     @include('ADMIN-DASHBOARD.sidebar')
 
@@ -418,6 +418,27 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 
 @stack('scripts')
+
+
+<script>
+  let reloadTimer;
+
+  // Function to reset the reload timer
+  function resetReloadTimer() {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      location.reload();
+    }, 300000); // 5 minutes = 300,000 ms
+  }
+
+  // Reset timer on page load
+  window.onload = resetReloadTimer;
+
+  // Reset timer on user interactions
+  ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
+    document.addEventListener(evt, resetReloadTimer, false);
+  });
+</script>
 
 </body>
 </html>
