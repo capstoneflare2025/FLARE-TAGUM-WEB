@@ -419,7 +419,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 @stack('scripts')
 
-
 <script>
   let reloadTimer;
 
