@@ -1636,11 +1636,13 @@ function openDetailsModal(incidentId, reportType) {
       btn.onmouseleave = () => btn.style.backgroundColor = '#F3C011';
       btn.textContent = 'Receive';
     }
-    btn.onclick = () => updateReportStatus(full.id, reportType, curStatus === 'Ongoing' ? 'Completed' : 'Ongoing');
+    btn.onclick = () => updateReportStatus(full.id, reportType, curStatus === 'Ongoing' ? 'Completed' : 'Ongoing') ;
     statusActionDiv.appendChild(btn);
+
   }
 
   document.getElementById('detailsModal').classList.remove('hidden');
+
 }
 
 async function updateReportStatus(incidentId, reportType, newStatus) {
@@ -1674,6 +1676,8 @@ async function updateReportStatus(incidentId, reportType, newStatus) {
       showToast?.(`Status updated to ${newStatus}`);
     })
     .catch(console.error);
+
+    closeDetailsModal()
 }
 
 function capStatus(s) {
