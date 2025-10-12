@@ -993,66 +993,74 @@
       </div>
 
             <!-- ============================
-            SMS Report Details
-        ============================= -->
-        <div id="smsDetails" class="hidden">
-        <div class="flex flex-col md:flex-row md:items-start md:space-x-8">
-            <!-- LEFT: Text -->
-            <div class="flex-1 space-y-2">
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Incident ID:</strong>
-                <span id="detailIncidentIdSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Reporter Name:</strong>
-                <span id="detailNameSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Contact:</strong>
-                <span id="detailContactSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Category:</strong>
-                <span id="detailTypeSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <!-- Exact Location single line -->
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Exact Location:</strong>
-                <span id="detailLocationSms" class="text-gray-600 flex-1 truncate" title=""></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Date:</strong>
-                <span id="detailDateSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Report Time:</strong>
-                <span id="detailReportTimeSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div class="flex">
-                <strong class="text-gray-700 w-40 shrink-0">Status:</strong>
-                <span id="detailStatusSms" class="text-gray-600 flex-1 break-words"></span>
-            </div>
-            <br>
-            <div>
-                <a id="detailSmsMapLink" class="text-sm text-blue-600 underline break-all">Open in Maps</a>
-            </div>
-            </div>
+        SMS Report Details
+    ============================= -->
+    <div id="smsDetails" class="hidden">
+    <div class="flex flex-col md:flex-row md:items-start md:space-x-8">
 
-            <!-- RIGHT: Photo (optional) -->
-            <div class="flex justify-center items-start mt-4 md:mt-0 md:w-[420px]">
-            <div id="detailSmsPhoto" class="w-full h-[260px] overflow-hidden rounded-lg shadow">
-                <img id="detailSmsPhotoImg" src="" alt="SMS Photo" class="w-full h-full object-cover rounded-lg">
-            </div>
-            </div>
+        <!-- LEFT: Text -->
+        <div class="flex-1 space-y-2">
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Incident ID:</strong>
+            <span id="detailIncidentIdSms" class="text-gray-600 flex-1 break-words"></span>
         </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Reporter Name:</strong>
+            <span id="detailNameSms" class="text-gray-600 flex-1 break-words"></span>
         </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Contact:</strong>
+            <span id="detailContactSms" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+            <!-- Report text / message -->
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Report Text:</strong>
+            <span id="detailSmsReportText" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Date:</strong>
+            <span id="detailDateSms" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Report Time:</strong>
+            <span id="detailReportTimeSms" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Status:</strong>
+            <span id="detailStatusSms" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+            <!-- Exact Location single line (string location from DB) -->
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Exact Location:</strong>
+            <span id="detailLocationSms" class="text-gray-600 flex-1 truncate" title=""></span>
+        </div>
+        <br>
+
+        <div class="flex">
+            <strong class="text-gray-700 w-40 shrink-0">Distance:</strong>
+            <span id="detailNearestDistanceSms" class="text-gray-600 flex-1 break-words"></span>
+        </div>
+        <br>
+
+        </div>
+    </div>
+    </div>
+
 
       <!-- ============================
            SMS Extra Panel (unchanged)
@@ -1250,18 +1258,103 @@ async function openFFChatDetailsModal(stationKey){
 function closeFFChatDetailsModal(){ _hide('ffChatDetailsModal'); }
 
 /* ---------- MESSAGE MODAL (simple live thread) ---------- */
-function renderFFChatThread(list = []){
+/* ---------- MESSAGE MODAL (text / image / audio) ---------- */
+/* ---------- MESSAGE MODAL (text / image / audio) ---------- */
+function renderFFChatThread(list = []) {
   const box = _el('ffChatMsgThread');
-  box.innerHTML = list.map(m => `
-    <div class="mb-2 ${m.sender==='admin'?'text-right':''}">
-      <div class="inline-block px-3 py-2 rounded ${m.sender==='admin'?'bg-blue-600 text-white':'bg-gray-200'}">
-        ${m.text ? m.text.replace(/</g,'&lt;') : ''}
-      </div>
-      <div class="text-xs text-gray-500 mt-1">${new Date(m.timestamp||Date.now()).toLocaleString()}</div>
-    </div>
-  `).join('');
+
+  const esc = (s='') => s.replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+
+  // Formatters
+  const pad = n => String(n).padStart(2,'0');
+  const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const fmtFull = ms => {
+    const d = new Date(ms);
+    return `${MONTHS[d.getMonth()]} ${pad(d.getDate())} ${d.getFullYear()} - ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const fmtTime = ms => {
+    const d = new Date(ms);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  // Show a full header if gap ≥ 6h or date changed
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  const isNewDay = (a,b) => {
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear()!==db.getFullYear() || da.getMonth()!==db.getMonth() || da.getDate()!==db.getDate();
+  };
+  const shouldHeader = (lastHeaderTs, curTs) =>
+    lastHeaderTs===null || (curTs - lastHeaderTs) >= SIX_HOURS || isNewDay(lastHeaderTs, curTs);
+
+  const bubbleBody = (m) => {
+    if (m.text && m.text.trim().length) {
+      return `<div class="whitespace-pre-wrap break-words">${esc(m.text)}</div>`;
+    }
+    if (m.imageBase64 && m.imageBase64.length) {
+      return `
+        <a href="data:image/jpeg;base64,${m.imageBase64}" target="_blank" rel="noopener">
+          <img
+            src="data:image/jpeg;base64,${m.imageBase64}"
+            alt="image"
+            style="
+              display:block;
+              width: 260px;
+              max-width: 100%;
+              height: auto;
+              max-height: 700px;
+              object-fit: cover;
+              border-radius: 8px;
+            "
+            loading="lazy"
+          />
+        </a>`;
+    }
+    if (m.audioBase64 && m.audioBase64.length) {
+      return `
+        <div class="flex items-center gap-2">
+          <audio controls preload="metadata"
+                 src="data:audio/mp4;base64,${m.audioBase64}"
+                 class="h-9 w-[220px]"></audio>
+          <span class="text-xs opacity-80"></span>
+        </div>`;
+    }
+    return `<em class="opacity-70">Unsupported/empty message</em>`;
+  };
+
+  // Build with headers
+  let lastHeaderTs = null;
+  const html = (list || [])
+    .sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))
+    .map(m => {
+      const ts = m.timestamp || Date.now();
+      const fromAdmin = m.sender === 'admin';
+      const header = shouldHeader(lastHeaderTs, ts)
+        ? `<div class="text-center my-3">
+             <span class="inline-block text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700">
+               ${fmtFull(ts)}
+             </span>
+           </div>`
+        : '';
+      if (header) lastHeaderTs = ts;
+
+      return `
+        ${header}
+        <div class="mb-2 ${fromAdmin ? 'text-right' : ''}">
+          <div class="inline-block px-3 py-2 rounded ${fromAdmin ? 'bg-blue-600 text-white' : 'bg-gray-200'}"
+               style="max-width: 75%;">
+            ${bubbleBody(m)}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">${fmtTime(ts)}</div>
+        </div>`;
+    }).join('');
+
+  box.innerHTML = html;
   box.scrollTop = box.scrollHeight;
 }
+
+
 
 let __ffChatUnsub = null;
 
@@ -1328,21 +1421,30 @@ function closeFFChatMessageModal(){
     const text = _el('ffChatMsgInput').value.trim();
     if (!key || !text) return;
 
-    try{
+    try {
       const now = new Date();
-      const pad = n => String(n).padStart(2,'0');
-      const date = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; // YYYY-MM-DD
+      const pad = n => String(n).padStart(2, '0');
+      const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`; // YYYY-MM-DD
       const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`; // HH:mm:ss (24h)
 
       const ref = firebase.database().ref(`${FF_ACCOUNTS_BASE}/${key}/AdminMessages`).push();
-      await ref.set({ sender:'admin', text, timestamp: now.getTime(), date, time });
+      await ref.set({
+        sender: 'admin',
+        text,
+        timestamp: now.getTime(),
+        date,
+        time,
+        isRead: false  // 👈 added default unread flag
+      });
+
       _el('ffChatMsgInput').value = '';
-    } catch (err){
+    } catch (err) {
       console.error('[FF Chat][Message] send failed', err);
       alert('Send failed.');
     }
   });
 })();
+
 
 
 /* =========================================================
@@ -2126,57 +2228,100 @@ function renderSortedReports(reportsArray, reportType, highlightId = null) {
  * ALL REPORTS (MERGE + RENDER)
  * ========================================================= */
 
-function parseDT(d, t, fallbackTs) {
-  let isoDate = '';
-  if (!d) return typeof fallbackTs === 'number' ? fallbackTs : 0;
-  if (d.includes('/')) isoDate = dateToISO(d);
-  else isoDate = d;
-  const normTime = to24h(t || '') || (t || '00:00');
-  const ts = Date.parse(`${isoDate} ${normTime}`);
-  if (!isNaN(ts)) return ts;
-  return typeof fallbackTs === 'number' ? fallbackTs : 0;
+function parseDT(d, t, fallbackTs, preferMDY = false) {
+  // t → 24h
+  const time24 = to24h(t || '') || (t || '00:00');
+
+  let best = NaN;
+  if (d && d.includes('/')) {
+    const [p1, p2, p3] = d.split('/');
+    const yyyy = (p3 && p3.length === 2) ? `20${p3}` : (p3 || '');
+    const A = String(p1 || '').padStart(2, '0'); // could be day or month
+    const B = String(p2 || '').padStart(2, '0'); // could be month or day
+    // MDY:  MM/DD/YYYY
+    const mdy = Date.parse(`${yyyy}-${A}-${B} ${time24}`);
+    // DMY:  DD/MM/YYYY
+    const dmy = Date.parse(`${yyyy}-${B}-${A} ${time24}`);
+
+    // choose by preference, but fall back to whichever is valid
+    best = preferMDY
+      ? (!isNaN(mdy) ? mdy : dmy)
+      : (!isNaN(dmy) ? dmy : mdy);
+  }
+
+  if (isNaN(best)) {
+    const fb = (typeof fallbackTs === 'number') ? fallbackTs : 0;
+    return fb;
+  }
+  return best;
 }
+
 
 function asArray(v) { return Array.isArray(v) ? v : (v ? Object.values(v) : []); }
 
+function firstFinite(...vals) {
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return NaN;
+}
+
+
 function buildAllReports() {
-  const fire = asArray(fireReports).map(r => ({
-    id: r.id, type: 'fireReports',
-    location: r.exactLocation || r.location || 'N/A',
-    date: r.date || '', time: r.reportTime || '',
-    status: r.status || 'Unknown',
-    lat: r.latitude, lng: r.longitude,
-    sortTs: parseDT(r.date, r.reportTime, r.timestamp ?? r.createdAt ?? r.updatedAt)
-  }));
+ const fire = asArray(fireReports).map(r => ({
+  id: r.id, type: 'fireReports',
+  location: r.exactLocation || r.location || 'N/A',
+  date: r.date || '', time: r.reportTime || '',
+  status: r.status || 'Unknown',
+  lat: r.latitude, lng: r.longitude,
+  // 1) prefer numeric timestamp; 2) else parse strings (DMY for legacy fire/other/EMS)
+  sortTs: (() => {
+    const num = firstFinite(r.timestamp, r.createdAt, r.updatedAt);
+    return Number.isFinite(num) ? num : parseDT(r.date, r.reportTime, 0, /*preferMDY=*/false);
+  })()
+}));
 
-  const other = asArray(otherEmergencyReports).map(r => ({
-    id: r.id, type: 'otherEmergency',
-    location: r.exactLocation || r.location || 'N/A',
-    date: r.date || '', time: r.reportTime || '',
-    status: r.status || 'Unknown',
-    lat: r.latitude, lng: r.longitude,
-    sortTs: parseDT(r.date, r.reportTime, r.timestamp ?? r.createdAt ?? r.updatedAt)
-  }));
+const other = asArray(otherEmergencyReports).map(r => ({
+  id: r.id, type: 'otherEmergency',
+  location: r.exactLocation || r.location || 'N/A',
+  date: r.date || '', time: r.reportTime || '',
+  status: r.status || 'Unknown',
+  lat: r.latitude, lng: r.longitude,
+  sortTs: (() => {
+    const num = firstFinite(r.timestamp, r.createdAt, r.updatedAt);
+    return Number.isFinite(num) ? num : parseDT(r.date, r.reportTime, 0, /*preferMDY=*/false);
+  })()
+}));
 
-  const ems = asArray(emsReports).map(r => ({
-    id: r.id, type: 'emsReports',
-    location: r.exactLocation || r.location || 'N/A',
-    date: r.date || '', time: r.reportTime || '',
-    status: r.status || 'Unknown',
-    lat: r.latitude, lng: r.longitude,
-    sortTs: parseDT(r.date, r.reportTime, r.timestamp ?? r.createdAt ?? r.updatedAt)
-  }));
+const ems = asArray(emsReports).map(r => ({
+  id: r.id, type: 'emsReports',
+  location: r.exactLocation || r.location || 'N/A',
+  date: r.date || '', time: r.reportTime || '',
+  status: r.status || 'Unknown',
+  lat: r.latitude, lng: r.longitude,
+  sortTs: (() => {
+    const num = firstFinite(r.timestamp, r.createdAt, r.updatedAt);
+    return Number.isFinite(num) ? num : parseDT(r.date, r.reportTime, 0, /*preferMDY=*/false);
+  })()
+}));
 
-  const sms = asArray(smsReports).map(r => ({
-    id: r.id, type: 'smsReports',
-    location: r.location || 'N/A',
-    date: r.date || '', time: r.time || '',
-    status: r.status || 'N/A',
-    lat: r.latitude, lng: r.longitude,
-    sortTs: parseDT(r.date, r.time, r.timestamp ?? r.createdAt ?? r.updatedAt)
-  }));
+const sms = asArray(smsReports).map(r => ({
+  id: r.id, type: 'smsReports',
+  location: r.location || 'N/A',
+  date: r.date || '', time: r.time || '',
+  status: r.status || 'N/A',
+  lat: r.latitude, lng: r.longitude,
+  // SMS from Android has millisecond 'timestamp' — use it; else parse as MDY
+  sortTs: (() => {
+    const num = firstFinite(r.timestamp, r.createdAt, r.updatedAt);
+    return Number.isFinite(num) ? num : parseDT(r.date, r.time, 0, /*preferMDY=*/true);
+  })()
+}));
 
-  return [...fire, ...other, ...ems, ...sms].sort((a, b) => b.sortTs - a.sortTs);
+return [...fire, ...other, ...ems, ...sms].sort((a, b) => b.sortTs - a.sortTs);
+
+
 }
 
 function statusColor(s) {
@@ -2682,32 +2827,42 @@ function openDetailsModal(incidentId, reportType) {
   }
 
   // ----- SMS -----
-  else if (reportType === 'smsReports') {
-    document.getElementById('detailIncidentIdSms').innerText = full.id || 'N/A';
-    document.getElementById('detailNameSms').innerText       = pick('name','reporterName','userName');
-    document.getElementById('detailContactSms').innerText    = pick('contact','phone','phoneNumber','mobile');
-    document.getElementById('detailTypeSms').innerText       = pick('category','type','emergencyType','SMS Report');
-    document.getElementById('detailLocationSms').innerText   = pick('location','exactLocation','address');
-    document.getElementById('detailDateSms').innerText       = pick('date');
-    document.getElementById('detailReportTimeSms').innerText = t24(pick('time','reportTime'));
-    document.getElementById('detailStatusSms').innerText     = capStatus(pick('status'));
+else if (reportType === 'smsReports') {
+  // Basic info
+  document.getElementById('detailIncidentIdSms').innerText = full.id || 'N/A';
+  document.getElementById('detailNameSms').innerText       = pick('name','reporterName','userName');
+  document.getElementById('detailContactSms').innerText    = pick('contact','phone','phoneNumber','mobile');
 
-    const mapEl = document.getElementById('detailSmsMapLink');
-    const murl  = pick('mapLink','location');
-    mapEl.innerHTML = (murl && murl !== 'N/A') ? `<a href="${murl}" target="_blank" rel="noopener">Open in Maps</a>` : '';
+  // Report text
+  document.getElementById('detailSmsReportText').innerText =
+    pick('fireReport','message','reportText','details','description');
 
-    const b64 = (full.photoBase64 || '').toString().trim();
-    document.getElementById('detailSmsPhoto').innerHTML = b64
-      ? `<img class="mt-2 rounded max-w-full" src="data:image/jpeg;base64,${b64}" alt="SMS Photo">` : '';
+  // Date / Time / Status
+  document.getElementById('detailDateSms').innerText       = pick('date'); // e.g., 10/13/2025
+  document.getElementById('detailReportTimeSms').innerText = t24(pick('time','reportTime'));
+  document.getElementById('detailStatusSms').innerText     = capStatus(pick('status'));
 
-    // show main SMS details + the extra panel under it
-    document.getElementById('smsDetails').classList.remove('hidden');
-    document.getElementById('smsExtra').classList.remove('hidden');
+  // Location
+  const loc = pick('location','exactLocation','address');
+  const locEl = document.getElementById('detailLocationSms');
+  locEl.innerText = loc || 'N/A';
+  locEl.title = loc && loc !== 'N/A' ? String(loc) : '';
 
-    // fill extras
-    document.getElementById('detailSmsStation').innerText    = pick('fireStationName','stationName');
-    document.getElementById('detailSmsReportText').innerText = pick('fireReport','message','reportText','details','description');
-  }
+  // Distance (nearestStationDistanceMeters)
+  (function () {
+    const raw  = pick('nearestStationDistanceMeters');
+    const m    = Number(raw);
+    let pretty = 'N/A';
+    if (Number.isFinite(m) && m >= 0) {
+      pretty = m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
+    }
+    document.getElementById('detailNearestDistanceSms').innerText = pretty;
+  })();
+
+  // Show the details panel
+  document.getElementById('smsDetails').classList.remove('hidden');
+}
+
 
   // ----- Status action button (works for ALL types, including SMS) -----
   // ----- Status action button (works for ALL types, including SMS) -----

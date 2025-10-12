@@ -88,9 +88,15 @@
 /* =========================
  * Globals
  * ========================= */
+
 let responseMessageRef;
 let fireSound, emergencySound;
 const activeToasts = new Map();
+
+// Safe global (won't throw if already defined somewhere else)
+window.FF_ACCOUNTS_BASE = window.FF_ACCOUNTS_BASE
+  || 'TagumCityCentralFireStation/FireFighter/AllFireFighterAccount';
+
 
 
 /* =========================
@@ -146,6 +152,7 @@ function removeToast(id) {
   activeToasts.delete(id);
 }
 
+
 /* =========================
  * Cross-page safe navigation
  * ========================= */
@@ -178,7 +185,86 @@ function handleViewIncident(uniqueId, type) {
     const url = `/app/incident-reports?incidentId=${encodeURIComponent(id)}&type=${encodeURIComponent(detectedType)}&modal=details`;
     window.location.href = url;
   }
+
+
+// === ADD: open FF chat modal for admin-messages toasts ===
+if (type === 'ffchat') {
+  const accountKey = String(uniqueId).split('|')[1]; // id shape: "ffchat|{accountKey}|{messageId}"
+  if (accountKey && typeof openFFChatMessageModal === 'function') {
+    openFFChatMessageModal(accountKey);
+  }
+  return;
 }
+
+
+}
+
+// === ADD: preview text for mutually exclusive payloads ===
+function ffPreviewFromMessage(m){
+  if (m?.imageBase64) return 'Sent a photo';
+  if (m?.audioBase64) return 'Sent a voice message';
+  if (m?.text)        return (m.text.length > 60 ? m.text.slice(0,57) + '…' : m.text);
+  return 'New message';
+}
+
+// === ADD: prime per-account so we don't toast historical on first load ===
+async function primeLastFFAdminKey(ref, storageKey){
+  try {
+    const snap = await ref.orderByChild('timestamp').limitToLast(1).once('value');
+    snap.forEach(c => localStorage.setItem(storageKey, c.key));
+  } catch(e){ console.warn('primeLastFFAdminKey failed', storageKey, e); }
+}
+
+
+// === ADD: watch all FireFighter AdminMessages and toast when firefighter replies ===
+async function attachFFAdminMessages(db){
+  const baseRef = db.ref(FF_ACCOUNTS_BASE);
+  const all = await baseRef.once('value');
+  if (!all.exists()) return;
+
+  all.forEach(accSnap => {
+    const accountKey = accSnap.key;
+    const acc = accSnap.val() || {};
+    const displayName = acc.name || accountKey;
+
+    const msgsRef = baseRef.child(accountKey).child('AdminMessages');
+    const seenKey = `ff_last_adminmsg_${accountKey}`;
+
+    // prime to avoid the latest historical message
+    primeLastFFAdminKey(msgsRef, seenKey).then(() => {
+      msgsRef.orderByChild('timestamp').limitToLast(1).on('child_added', snap => {
+        const id = snap.key;
+        const m  = snap.val() || {};
+
+        // skip the primed historical item
+        if (localStorage.getItem(seenKey) === id) {
+          localStorage.setItem(seenKey, id);
+          return;
+        }
+
+        // only notify when the FIREFIGHTER sent it (ignore admin echoes)
+        const isFromAdmin = String(m.sender || '').toLowerCase() === 'admin';
+        if (isFromAdmin) {
+          localStorage.setItem(seenKey, id);
+          return;
+        }
+
+        // show toast (click opens that account's chat modal)
+        showQueuedToast({
+          id: `ffchat|${accountKey}|${id}`,
+          type: 'ffchat',
+          reporterName: displayName,
+          message: ffPreviewFromMessage(m),
+          sound: null // set to emergencySound if you want a sound
+        });
+
+        localStorage.setItem(seenKey, id);
+      });
+    });
+  });
+}
+
+
 
 /* =========================
  * Main
@@ -283,6 +369,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Attach listeners for the single node bundle
   attachListenersFor(NODES);
+
+
+// === ADD: start AdminMessages toasts (firefighter→admin chat) ===
+attachFFAdminMessages(db);
+
 
   // Expose responseMessageRef if needed elsewhere
   responseMessageRef = db.ref(NODES.response);

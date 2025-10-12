@@ -326,36 +326,54 @@ class FirebaseService
      * Now reads ONLY from:
      *   TagumCityCentralFireStation/AllReport/SmsReport
      */
-    public function getSmsReports(string $prefix): array
-    {
-        try {
-            $node = $this->baseNode($prefix, 'sms');
-            $raw  = $this->database->getReference($node)->getValue();
-            if (!$raw) return [];
+  public function getSmsReports(string $prefix): array
+{
+    try {
+        // e.g. TagumCityCentralFireStation/AllReport/SmsReport
+        $node = $this->baseNode($prefix, 'sms');
+        $raw  = $this->database->getReference($node)->getValue();
+        if (!$raw) return [];
 
-            $out = [];
-            foreach ($raw as $id => $report) {
-                $out[] = [
-                    'id'             => $id,
-                    'name'           => $report['name'] ?? null,
-                    'location'       => $report['location'] ?? null,
-                    'fireReport'     => $report['fireReport'] ?? $report['message'] ?? null,
-                    'date'           => $report['date'] ?? null,
-                    'time'           => $this->normalizeTime($report['time'] ?? null),
-                    'contact'        => $report['contact'] ?? null,
-                    'latitude'       => $report['latitude'] ?? null,
-                    'longitude'      => $report['longitude'] ?? null,
-                    'status'         => ucfirst(strtolower($report['status'] ?? 'Pending')),
-                    'timestamp'      => $this->pickTimestamp($report),
-                    'fireStationName'=> $report['fireStationName'] ?? null,
-                ];
-            }
-            return $out;
-        } catch (\Throwable $e) {
-            Log::error("Error fetching SMS reports: ".$e->getMessage());
-            return [];
+        $out = [];
+        foreach ($raw as $id => $report) {
+            // Prefer server-side numeric timestamps if present
+            $timestamp = $this->pickTimestamp($report); // checks: timestamp|createdAt|updatedAt|parsed
+
+            $out[] = [
+                'id'                                => $id,
+                'name'                              => $report['name'] ?? null,
+                'location'                          => $report['location'] ?? null,
+                'fireReport'                        => $report['fireReport'] ?? ($report['message'] ?? null),
+                'date'                              => $report['date'] ?? null,                               // Android sends MM/dd/yyyy (e.g., 10/13/2025)
+                'time'                              => $this->normalizeTime($report['time'] ?? null),        // normalize to 24h HH:mm[:ss]
+                'contact'                           => $report['contact'] ?? null,
+                'latitude'                          => array_key_exists('latitude',  $report) ? (float) $report['latitude']  : null,
+                'longitude'                         => array_key_exists('longitude', $report) ? (float) $report['longitude'] : null,
+                'status'                            => ucfirst(strtolower($report['status'] ?? 'Pending')),
+                'timestamp'                         => is_numeric($timestamp) ? (int) $timestamp : null,
+
+                // nearest station metadata (optional, if present)
+                'nearestStationName'                => $report['nearestStationName'] ?? null,
+                'nearestStationDistanceMeters'      => array_key_exists('nearestStationDistanceMeters', $report)
+                                                       ? (int) $report['nearestStationDistanceMeters']
+                                                       : null,
+
+                // destination (central) station name
+                'fireStationName'                   => $report['fireStationName'] ?? null,
+            ];
         }
+
+        // Newest → oldest so SMS appears on top in “All Reports”
+        usort($out, fn($a, $b) => ($b['timestamp'] ?? 0) <=> ($a['timestamp'] ?? 0));
+
+        return $out;
+    } catch (\Throwable $e) {
+        Log::error("Error fetching SMS reports: " . $e->getMessage());
+        return [];
     }
+}
+
+
 
     /**
      * Now updates ONLY at:
