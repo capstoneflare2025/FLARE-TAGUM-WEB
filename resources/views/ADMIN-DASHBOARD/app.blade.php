@@ -8,6 +8,9 @@
 
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-6 right-6 z-50 space-y-3"></div>
+    <!-- put this in your main layout <head> -->
+    <meta name="station-key" content="{{ session('station') ?? 'TagumCityCentralFireStation' }}">
+
 
     <!-- Preload Bootstrap Icons Font -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin="anonymous">
@@ -35,6 +38,23 @@
         .logout:hover { background-color: #c0392b; }
         .sidebar img { width: 20px; height: 20px; margin-right: 20px; }
         .main-content{ margin-left: 260px; padding: 20px; margin-top: 20px; }
+        .msg-btn { position: relative; display: inline-block; }
+        .msg-badge {
+        position: absolute; top: -6px; right: -6px;
+        min-width: 16px; height: 16px; padding: 0 4px;
+        border-radius: 9999px; font-size: 10px; line-height: 16px;
+        background: #ef4444; color: #fff; text-align: center;
+        box-shadow: 0 0 0 2px #fff;
+        }
+        .msg-badge.hidden { display: none; }
+
+        #ffChatMsgThread {
+        height: 400px;
+        overflow-y: auto;
+        }
+
+
+
     </style>
 </head>
 <body resetReloadTimer()>
@@ -57,6 +77,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+
 <!-- Routing plugin -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
@@ -67,9 +88,10 @@
 /* =========================
  * Globals
  * ========================= */
-let canocotanRef, laFilipinaRef, mabiniRef, responseMessageRef;
+let responseMessageRef;
 let fireSound, emergencySound;
 const activeToasts = new Map();
+
 
 /* =========================
  * Helpers: Priming
@@ -78,32 +100,23 @@ const activeToasts = new Map();
 async function primeLastKey(ref, storageKey) {
   try {
     const snap = await ref.limitToLast(1).once('value');
-    snap.forEach(child => {
-      localStorage.setItem(storageKey, child.key);
-    });
-  } catch (e) {
-    console.warn('primeLastKey failed:', storageKey, e);
-  }
+    snap.forEach(child => { localStorage.setItem(storageKey, child.key); });
+  } catch (e) { console.warn('primeLastKey failed:', storageKey, e); }
 }
 
 // For replies, prime per-incident so opening the page doesn’t show the latest old reply
 async function primeLastReplyKey(messagesRef, storageKey) {
   try {
     const snap = await messagesRef.limitToLast(1).once('value');
-    snap.forEach(child => {
-      localStorage.setItem(storageKey, child.key);
-    });
-  } catch (e) {
-    console.warn('primeLastReplyKey failed:', storageKey, e);
-  }
+    snap.forEach(child => { localStorage.setItem(storageKey, child.key); });
+  } catch (e) { console.warn('primeLastReplyKey failed:', storageKey, e); }
 }
 
 /* =========================
  * Toasts
  * ========================= */
 function showQueuedToast({ id, type, reporterName = 'Unknown', message = '', sound = null }) {
-  if (!id) return;
-  if (activeToasts.has(id)) return;
+  if (!id || activeToasts.has(id)) return;
 
   const toastContainer = document.getElementById("toastContainer");
   if (!toastContainer) return;
@@ -146,9 +159,12 @@ function handleViewIncident(uniqueId, type) {
   const detectedType = row?.getAttribute('data-type') || type;
 
   if (type === 'message') {
-    // If chat modal exists on this page, open it; else deep-link
     if (typeof openMessageModal === 'function') {
-      const guessedType = (detectedType === 'otherEmergency') ? 'otherEmergency' : 'fireReports';
+      // Map to UI route keys you already use
+      const guessedType =
+        detectedType === 'otherEmergency' ? 'otherEmergency' :
+        detectedType === 'emsReports'     ? 'emsReports'     :
+                                            'fireReports';
       openMessageModal(id, guessedType);
     } else {
       window.location.href = `/app/incident-reports?incidentId=${encodeURIComponent(id)}&type=${encodeURIComponent('fireReports')}&modal=details`;
@@ -168,6 +184,15 @@ function handleViewIncident(uniqueId, type) {
  * Main
  * ========================= */
 document.addEventListener('DOMContentLoaded', async function () {
+
+
+  const nameEl = document.getElementById('station-name');
+  if (nameEl) nameEl.textContent = 'Loading…'; // temporary placeholder
+
+  // Resolve the station key from meta or global
+  const metaStation = document.querySelector('meta[name="station-key"]');
+  const stationKey  = (window.__STATION_KEY__ || metaStation?.content || 'TagumCityCentralFireStation').trim();
+
   const firebaseConfig = {
     apiKey: "AIzaSyCrjSyOI-qzCaJptEkWiRfEuaG28ugTmdE",
     authDomain: "capstone-flare-2025.firebaseapp.com",
@@ -179,22 +204,52 @@ document.addEventListener('DOMContentLoaded', async function () {
     measurementId: "G-QZ8P5VLHF2"
   };
 
-  // ✅ Guard Firebase init (prevents crash when navigating between pages)
+  // Guard Firebase init
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   }
-  const database = firebase.database();
+  const db = firebase.database();
 
-  // ✅ Singleton guard so listeners aren’t registered multiple times
+
+  // --- NEW: Fetch profile to get the display name (and optional logo) ---
+  try {
+    const profileSnap = await db.ref(`${stationKey}/Profile`).once('value');
+    const profile = profileSnap.val() || {};
+
+    // Try common fields: displayName -> name -> title; else prettify stationKey
+    const prettyFromKey = stationKey
+      .replace(/([A-Z])/g, ' $1')      // split CamelCase
+      .replace(/^\s+/, '')             // trim left
+      .replace(/\s+/g, ' ')            // collapse spaces
+      .trim();
+
+    const displayName =
+      (typeof profile.displayName === 'string' && profile.displayName.trim()) ||
+      (typeof profile.name === 'string' && profile.name.trim()) ||
+      (typeof profile.title === 'string' && profile.title.trim()) ||
+      prettyFromKey;
+
+    if (nameEl) nameEl.textContent = displayName;
+
+    // Optional: if you store a logo URL in the profile, use it
+    if (profile.logoUrl) {
+      const logoEl = document.querySelector('.sidebar .logo');
+      if (logoEl && logoEl.tagName === 'IMG') {
+        logoEl.src = profile.logoUrl;
+        logoEl.alt = displayName + ' Logo';
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read station profile:', e);
+    if (nameEl) {
+      const fallback = stationKey.replace(/([A-Z])/g, ' $1').trim();
+      nameEl.textContent = fallback || 'Fire Station';
+    }
+  }
+
+  // Singleton guard so listeners aren’t registered multiple times
   if (window.__flareRealtimeStarted) return;
   window.__flareRealtimeStarted = true;
-
-  // Roots (for fallback, profile lookups, etc.)
-  canocotanRef  = database.ref('CanocotanFireStation');
-  laFilipinaRef = database.ref('LaFilipinaFireStation');
-  mabiniRef     = database.ref('MabiniFireStation');
-
-  const sessionEmail = ("{{ session('firebase_user_email') }}" || "").toLowerCase();
 
   // Sounds
   fireSound = new Audio("{{ asset('sound/alert.mp3') }}");
@@ -209,105 +264,45 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.removeEventListener('click', unlockAudio);
   });
 
-  // ===== Keep your Fire Station name display intact =====
-  const stationProfileKey = {
-    CanocotanFireStation: 'CanocotanProfile',
-    LaFilipinaFireStation: 'LaFilipinaProfile',
-    MabiniFireStation: 'MabiniProfile'
+  // =========================
+  // Single-station, single-root nodes (ONLY Tagum City Central)
+  // =========================
+  const BASE_ROOT = 'TagumCityCentralFireStation/AllReport';
+  const NODES = {
+    base: BASE_ROOT,
+    fire:      `${BASE_ROOT}/FireReport`,
+    emergency: `${BASE_ROOT}/OtherEmergencyReport`,
+    ems:       `${BASE_ROOT}/EmergencyMedicalServicesReport`,
+    response:  `${BASE_ROOT}/ResponseMessage`
   };
 
-  function checkUserInFireStation(station, email) {
-    const profileKey = stationProfileKey[station];
-    database.ref(`${station}/${profileKey}`).once('value').then(snap => {
-      let data = snap.val();
-      if (!data) return tryOldRoot();
-      const em = (data.email || '').toLowerCase();
-      if (em && em === email.toLowerCase()) {
-        const el = document.getElementById('station-name');
-        if (el) el.innerText = data.name || station;
-      }
-    }).catch(tryOldRoot);
+  // Prime before attaching listeners (prevents showing last historical)
+  await primeLastKey(db.ref(NODES.fire),      `last_fire_id_${NODES.base}`);
+  await primeLastKey(db.ref(NODES.emergency), `last_emergency_id_${NODES.base}`);
+  await primeLastKey(db.ref(NODES.ems),       `last_ems_id_${NODES.base}`);
 
-    function tryOldRoot() {
-      database.ref(station).once('value').then(snap => {
-        const data = snap.val() || {};
-        const em = (data.email || '').toLowerCase();
-        if (em && em === email.toLowerCase()) {
-          const el = document.getElementById('station-name');
-          if (el) el.innerText = data.name || station;
-        }
-      }).catch(() => {});
-    }
-  }
-
-  if (sessionEmail) {
-    checkUserInFireStation('CanocotanFireStation', sessionEmail);
-    checkUserInFireStation('LaFilipinaFireStation', sessionEmail);
-    checkUserInFireStation('MabiniFireStation', sessionEmail);
-  }
-  // ======================================================
-
-  // Menu active state (optional)
-  document.querySelectorAll('.menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-    });
-  });
-
-  // Email -> station nodes
-  function nodesFor(base, prefix) {
-    return {
-      base,
-      fire: `${base}/${prefix}FireReport`,
-      emergency: `${base}/${prefix}OtherEmergency`,
-      response: `${base}/ResponseMessage`
-    };
-  }
-
-  function getNodesByEmail(email) {
-    const e = (email || "").toLowerCase();
-    if (e.includes("mabini123@gmail.com"))     return nodesFor("MabiniFireStation", "Mabini");
-    if (e.includes("canocotan123@gmail.com"))  return nodesFor("CanocotanFireStation", "Canocotan");
-    if (e.includes("lafilipina123@gmail.com")) return nodesFor("LaFilipinaFireStation", "LaFilipina");
-    return null;
-  }
-
-  let nodes = getNodesByEmail(sessionEmail);
-
-  // ✅ Fallback: attach listeners to ALL 3 stations if session email is missing/mismatched
-  const nodeBundles = nodes ? [nodes] : [
-    nodesFor("MabiniFireStation", "Mabini"),
-    nodesFor("CanocotanFireStation", "Canocotan"),
-    nodesFor("LaFilipinaFireStation", "LaFilipina"),
-  ];
-
-  // Prime all station bundles BEFORE attaching listeners (prevents showing last historical)
-  for (const n of nodeBundles) {
-    await primeLastKey(firebase.database().ref(n.fire),      `last_fire_id_${n.base}`);
-    await primeLastKey(firebase.database().ref(n.emergency), `last_emergency_id_${n.base}`);
-  }
-
-  // Attach listeners
-  nodeBundles.forEach(n => attachListenersFor(n));
+  // Attach listeners for the single node bundle
+  attachListenersFor(NODES);
 
   // Expose responseMessageRef if needed elsewhere
-  responseMessageRef = database.ref((nodeBundles[0] || {}).response);
+  responseMessageRef = db.ref(NODES.response);
 
   /* =========================
-   * Listener bundle
+   * Listener bundle (Tagum City Central only)
    * ========================= */
   function attachListenersFor(n) {
-    // FIRE — toast first, then optional page update
-    firebase.database().ref(n.fire).limitToLast(1).on('child_added', snap => {
+    // ----- FIRE -----
+    db.ref(n.fire).limitToLast(1).on('child_added', snap => {
       const v = snap.val(); const id = snap.key;
       if (!v || !id) return;
 
       const seenKey = `last_fire_id_${n.base}`;
-      if (localStorage.getItem(seenKey) === id) return;  // ignore primed last
+      if (localStorage.getItem(seenKey) === id) return;
       localStorage.setItem(seenKey, id);
 
       v.id = id;
+      v.timestamp = Number.isFinite(v.timestamp) ? v.timestamp : Date.now();
+      v.createdAt = v.createdAt ?? v.timestamp;
 
       showQueuedToast({
         id: `${n.base}|${id}`,
@@ -317,23 +312,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         sound: fireSound
       });
 
-      // Optional page updates (guarded so they don’t block the toast)
       try {
         if (typeof insertNewReportRow === 'function') insertNewReportRow(v, 'fireReports');
         if (typeof renderAllReports === 'function')   renderAllReports();
       } catch(e){ console.warn('[fire optional update]', e); }
     });
 
-    // OTHER EMERGENCY — toast first, then optional update
-    firebase.database().ref(n.emergency).limitToLast(1).on('child_added', snap => {
+    // ----- OTHER EMERGENCY -----
+    db.ref(n.emergency).limitToLast(1).on('child_added', snap => {
       const v = snap.val(); const id = snap.key;
       if (!v || !id) return;
 
       const seenKey = `last_emergency_id_${n.base}`;
-      if (localStorage.getItem(seenKey) === id) return;  // ignore primed last
+      if (localStorage.getItem(seenKey) === id) return;
       localStorage.setItem(seenKey, id);
 
       v.id = id;
+      v.timestamp = Number.isFinite(v.timestamp) ? v.timestamp : Date.now();
+      v.createdAt = v.createdAt ?? v.timestamp;
 
       showQueuedToast({
         id: `${n.base}|${id}`,
@@ -349,21 +345,46 @@ document.addEventListener('DOMContentLoaded', async function () {
       } catch(e){ console.warn('[other optional update]', e); }
     });
 
-    // Replies under FIRE — prime per incident, then listen
-    firebase.database().ref(n.fire).on('child_added', async reportSnap => {
+    // ----- EMS -----
+    db.ref(n.ems).limitToLast(1).on('child_added', snap => {
+      const v = snap.val(); const id = snap.key;
+      if (!v || !id) return;
+
+      const seenKey = `last_ems_id_${n.base}`;
+      if (localStorage.getItem(seenKey) === id) return;
+      localStorage.setItem(seenKey, id);
+
+      v.id = id;
+      v.timestamp = Number.isFinite(v.timestamp) ? v.timestamp : Date.now();
+      v.createdAt = v.createdAt ?? v.timestamp;
+
+      showQueuedToast({
+        id: `${n.base}|${id}`,
+        type: 'emsReports',
+        reporterName: v.name || 'Unknown',
+        message: "EMS Report! A new incident has been added.",
+        sound: emergencySound
+      });
+
+      try {
+        if (typeof insertNewEmsRow === 'function') insertNewEmsRow(v);
+        if (typeof renderAllReports === 'function') renderAllReports();
+      } catch(e){ console.warn('[ems optional update]', e); }
+    });
+
+    // ----- Replies under FIRE -----
+    db.ref(n.fire).on('child_added', async reportSnap => {
       const incidentId = reportSnap.key;
       const reportData = reportSnap.val();
       const msgsRef  = reportSnap.ref.child('messages');
       const seenKey  = `last_reply_id_${n.base}_${incidentId}`;
 
-      // Prime reply so existing last reply won't toast on first load
       await primeLastReplyKey(msgsRef, seenKey);
 
       msgsRef.limitToLast(1).on('child_added', msgSnap => {
         const msg = msgSnap.val();
         if (!msg || (String(msg.type||'').toLowerCase() !== 'reply')) return;
-
-        if (localStorage.getItem(seenKey) === msgSnap.key) return; // ignore primed one
+        if (localStorage.getItem(seenKey) === msgSnap.key) return;
         localStorage.setItem(seenKey, msgSnap.key);
 
         showQueuedToast({
@@ -376,8 +397,8 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     });
 
-    // Replies under OTHER — prime per incident, then listen
-    firebase.database().ref(n.emergency).on('child_added', async reportSnap => {
+    // ----- Replies under OTHER EMERGENCY -----
+    db.ref(n.emergency).on('child_added', async reportSnap => {
       const incidentId = reportSnap.key;
       const reportData = reportSnap.val();
       const msgsRef = reportSnap.ref.child('messages');
@@ -388,8 +409,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       msgsRef.limitToLast(1).on('child_added', msgSnap => {
         const msg = msgSnap.val();
         if (!msg || (String(msg.type||'').toLowerCase() !== 'reply')) return;
-
-        if (localStorage.getItem(seenKey) === msgSnap.key) return; // ignore primed one
+        if (localStorage.getItem(seenKey) === msgSnap.key) return;
         localStorage.setItem(seenKey, msgSnap.key);
 
         showQueuedToast({
@@ -402,8 +422,33 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     });
 
-    // Response status changes — guard optional table updater
-    firebase.database().ref(n.response).on('child_changed', snapshot => {
+    // ----- Replies under EMS -----
+    db.ref(n.ems).on('child_added', async reportSnap => {
+      const incidentId = reportSnap.key;
+      const reportData = reportSnap.val();
+      const msgsRef = reportSnap.ref.child('messages');
+      const seenKey = `last_reply_id_${n.base}_${incidentId}`;
+
+      await primeLastReplyKey(msgsRef, seenKey);
+
+      msgsRef.limitToLast(1).on('child_added', msgSnap => {
+        const msg = msgSnap.val();
+        if (!msg || (String(msg.type||'').toLowerCase() !== 'reply')) return;
+        if (localStorage.getItem(seenKey) === msgSnap.key) return;
+        localStorage.setItem(seenKey, msgSnap.key);
+
+        showQueuedToast({
+          id: `${n.base}|${incidentId}|msg3`,
+          type: 'message',
+          reporterName: reportData?.name || msg.reporterName || 'Unknown',
+          message: "New Message Received. Tap to view the chat.",
+          sound: null
+        });
+      });
+    });
+
+    // ----- Response status changes (optional) -----
+    db.ref(n.response).on('child_changed', snapshot => {
       const updatedReport = snapshot.val() || {};
       try {
         if (typeof updateTableStatus === 'function') {
@@ -412,28 +457,19 @@ document.addEventListener('DOMContentLoaded', async function () {
       } catch (e) { console.warn('[updateTableStatus failed]', e); }
     });
   }
-
 }); // DOMContentLoaded
 </script>
-
 
 @stack('scripts')
 
 <script>
+  // Auto-reload after 5 minutes of inactivity (unchanged)
   let reloadTimer;
-
-  // Function to reset the reload timer
   function resetReloadTimer() {
     clearTimeout(reloadTimer);
-    reloadTimer = setTimeout(() => {
-      location.reload();
-    }, 300000); // 5 minutes = 300,000 ms
+    reloadTimer = setTimeout(() => { location.reload(); }, 300000);
   }
-
-  // Reset timer on page load
   window.onload = resetReloadTimer;
-
-  // Reset timer on user interactions
   ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
     document.addEventListener(evt, resetReloadTimer, false);
   });

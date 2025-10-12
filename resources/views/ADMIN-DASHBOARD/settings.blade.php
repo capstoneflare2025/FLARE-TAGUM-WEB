@@ -22,6 +22,15 @@
         margin-top: 0px;
     }
 
+    #manageApplicationOptions{
+        margin-bottom: 30px;
+    }
+
+      #manageUsersOptions{
+        margin-bottom: 30px;
+    }
+
+
     #frontendPosting {
         margin-bottom: 30px;
     }
@@ -100,11 +109,11 @@
 </style>
 
 @section('content')
-    <div class="flex flex-col md:flex-row">
-        <h1 class="text-xl font-bold mb-6 md:mr-6">Settings</h1>
+    <div class="flex flex-col md:flex-row" style="height: 710px;">
+        <h1 class="text-xl font-bold mb-6 md:ml-10">Settings</h1>
 
         <!-- Sidebar -->
-        <div id="sidebar" class="w-full md:w-1/4">
+        <div id="sidebar" class="w-full md:w-1/4" style="margin-left: -80px;">
             <ul class="space-y-4">
                 <!-- General Options -->
                 <li id="generalOptions" onclick="toggleTab('general-options-tab', 'generalOptions')" class="hover:text-gray-400 flex items-center active-link">
@@ -112,17 +121,25 @@
                     <a href="javascript:void(0)">General Options</a>
                 </li>
 
+                  <!-- Manage Application-->
+                <li id="manageApplicationOptions" onclick="toggleTab('manage-application-tab', 'manageApplicationOptions')" class="hover:text-gray-400 flex items-center">
+                    <img src="{{ asset('images/manage_application.png') }}" alt="Manage Application" class="w-6 h-6 mr-3">
+                    <a href="javascript:void(0)">Manage Application</a>
+                </li>
+
+                    <!-- Manage Users-->
+                <li id="manageUsersOptions" onclick="toggleTab('manage-users-tab', 'manageUsersOptions')" class="hover:text-gray-400 flex items-center">
+                    <img src="{{ asset('images/manage_users.png') }}" alt="Manage Users" class="w-6 h-6 mr-3">
+                    <a href="javascript:void(0)">Manage Users</a>
+                </li>
+
+
                 <!-- Frontend Posting -->
                 <li id="frontendPosting" onclick="toggleTab('frontend-posting-tab', 'frontendPosting')" class="hover:text-gray-400 flex items-center">
                     <img src="{{ asset('images/profile_black.png') }}" alt="Frontend Posting" class="w-6 h-6 mr-3">
                     <a href="javascript:void(0)">My Profile</a>
                 </li>
 
-                <!-- My Account -->
-                <li id="myAccount" onclick="openLogoutConfirmation()" class="hover:text-gray-400 flex items-center">
-                    <img src="{{ asset('images/logout_black.png') }}" alt="My Account" class="w-6 h-6 mr-3">
-                    <a href="javascript:void(0)">Logout</a>
-                </li>
             </ul>
         </div>
 
@@ -130,6 +147,14 @@
         <div class="w-full md:w-3/4 p-6">
             <div id="general-options-tab" class="tab-content active">
                 @include('ADMIN-DASHBOARD.SETTINGS.general-options')
+            </div>
+
+            <div id="manage-application-tab" class="tab-content">
+                @include('ADMIN-DASHBOARD.SETTINGS.manage-application')
+            </div>
+
+            <div id="manage-users-tab" class="tab-content">
+                @include('ADMIN-DASHBOARD.SETTINGS.manage-users')
             </div>
 
             <div id="frontend-posting-tab" class="tab-content">
@@ -143,17 +168,7 @@
         </div>
     </div>
 
-    <!-- Modal for Logout Confirmation -->
-    <div id="logoutModal" class="modal">
-        <div class="modal-content">
-            <img src="{{ asset('images/logo.png') }}" alt="Logo">
-            <h2>Are you sure you want to logout?</h2>
-            <button class="cancel" onclick="closeLogoutModal()">Cancel</button>
-            <a id="confirmLogoutLink" href="javascript:void(0)">
-                <button class="confirm">Logout</button>
-            </a>
-        </div>
-    </div>
+
 @endsection
 
 <script>
@@ -164,14 +179,6 @@
         document.getElementById(linkId).classList.add('active-link');
     }
 
-    function openLogoutConfirmation() {
-        document.getElementById('logoutModal').style.display = 'flex';
-
-        // Set logout link action when confirmation is confirmed
-        document.getElementById('confirmLogoutLink').onclick = function() {
-            window.location.href = '{{ route('logout') }}';
-        }
-    }
 
     function closeLogoutModal() {
         document.getElementById('logoutModal').style.display = 'none';

@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\IncidentReportsController;
 use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\SmsReportController;
+use App\Http\Controllers\UserController;
 
 // Auth Pages
 Route::get('/', [AdminController::class, 'login'])->name('login');
@@ -16,6 +17,7 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 // Unified chat + scoped status
 Route::post('/store-response', [ResponseController::class, 'storeResponse']);
 Route::post('/update-report-status', [ResponseController::class, 'updateReportStatus']);
+Route::get('/manage-users', [UserController::class, 'manageUsers'])->name('manage.users');
 
 Route::get('/fetch-fire-reports', [IncidentReportsController::class, 'fetchFireReports'])->name('fetch.fireReports');
 

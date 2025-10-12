@@ -8,62 +8,95 @@ use Illuminate\Support\Facades\Log;
 
 class ResponseController extends Controller
 {
-    protected $firebaseService;
+    protected FirebaseService $firebaseService;
 
     public function __construct(FirebaseService $firebaseService)
     {
         $this->firebaseService = $firebaseService;
     }
 
+    /**
+     * Map any incoming reportType variant to the service key used by FirebaseService.
+     * FirebaseService expects: 'fire' | 'otherEmergency' | 'emergencyMedicalServices' | 'sms'
+     */
+    private function normalizeReportType(string $t): string
+    {
+        $t = strtolower(trim($t));
+
+        if (in_array($t, ['fire', 'firereports', 'tagumfire'], true)) {
+            return 'fire';
+        }
+        if (in_array($t, ['otheremergency', 'othereports', 'tagumotheremergency'], true)) {
+            return 'otherEmergency';
+        }
+        if (in_array($t, ['ems', 'emsreports', 'emergencymedicalservices', 'tagumems'], true)) {
+            return 'emergencyMedicalServices';
+        }
+        if (in_array($t, ['sms', 'smsreport', 'smsreports', 'tagumsms'], true)) {
+            return 'sms';
+        }
+
+        return 'otherEmergency';
+    }
+
+    /**
+     * PATCH/POST: Update a report's status.
+     * Body: { prefix, reportType, incidentId, status }
+     */
     public function updateReportStatus(Request $request)
     {
         try {
             $data = $request->validate([
                 'prefix'     => 'required|string',
                 'incidentId' => 'required|string',
-                'reportType' => 'required|in:fireReports,otherEmergency',
+                'reportType' => 'required|string|in:fire,fireReports,otherEmergency,emsReports,emergencyMedicalServices,sms,smsReports',
                 'status'     => 'required|string',
             ]);
 
+            $normalizedType = $this->normalizeReportType($data['reportType']);
+
+            // prefix ignored in new structure, but method signature preserved
             $ok = $this->firebaseService->updateScopedReportStatus(
                 $data['prefix'],
-                $data['reportType'],
+                $normalizedType,
                 $data['incidentId'],
                 $data['status']
             );
 
-            return response()->json(['success' => $ok]);
+            return response()->json(['success' => (bool) $ok]);
         } catch (\Throwable $e) {
-            Log::error("Error updating report status: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to update report status']);
+            Log::error("Error updating report status: {$e->getMessage()}", ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Failed to update report status'], 500);
         }
     }
 
     /**
-     * Station reply:
-     * 1) Write to incident thread (type='response')
-     * 2) Write to station inbox summary
+     * POST: Store a station reply into the incident thread + ResponseMessage list.
+     * Body: { prefix, reportType, incidentId, responseMessage, reporterName?, contact?, fireStationName? }
      */
     public function storeResponse(Request $request)
     {
         try {
             $data = $request->validate([
-                'prefix'          => 'required|string',                 // e.g., Mabini
-                'reportType'      => 'required|in:fireReports,otherEmergency',
+                'prefix'          => 'required|string',
+                'reportType'      => 'required|string|in:fire,fireReports,otherEmergency,emsReports,emergencyMedicalServices,sms,smsReports',
                 'incidentId'      => 'required|string',
                 'responseMessage' => 'required|string',
                 'reporterName'    => 'nullable|string',
                 'contact'         => 'nullable|string',
-                'fireStationName' => 'nullable|string',                 // optional pretty name
+                'fireStationName' => 'nullable|string',
             ]);
 
-            $now     = now();
-            $nowMs   = (int) round(microtime(true) * 1000);
-            $fsNice  = $data['fireStationName'] ?? "{$data['prefix']} Fire Station";
+            $normalizedType = $this->normalizeReportType($data['reportType']);
+
+            $now   = now();
+            $nowMs = (int) round(microtime(true) * 1000);
+
+            $fsNice  = $data['fireStationName'] ?? 'Tagum City Central Fire Station';
             $contact = $data['contact'] ?? '';
             $name    = $data['reporterName'] ?? '';
 
-            // 1) Thread message (Android chat reads this)
+            // 1) Thread message (stored under incident)
             $threadMsg = [
                 'type'         => 'response',
                 'text'         => $data['responseMessage'],
@@ -77,14 +110,15 @@ class ResponseController extends Controller
                 'timestamp'    => $nowMs,
                 'isRead'       => false,
             ];
+
             $ok1 = $this->firebaseService->storeUnifiedMessage(
-                $data['prefix'],
-                $data['reportType'],
+                $data['prefix'],           // retained for compatibility
+                $normalizedType,
                 $data['incidentId'],
                 $threadMsg
             );
 
-            // 2) Station inbox summary (Android Inbox reads this)
+            // 2) Station-wide ResponseMessage entry (AllReport/ResponseMessage)
             $summary = [
                 'uid'             => null,
                 'fireStationName' => $fsNice,
@@ -98,12 +132,13 @@ class ResponseController extends Controller
                 'timestamp'       => $nowMs,
                 'isRead'          => false,
             ];
+
             $ok2 = $this->firebaseService->storeStationResponseSummary($data['prefix'], $summary);
 
             return response()->json(['success' => ($ok1 && $ok2)]);
         } catch (\Throwable $e) {
-            Log::error("Error storing response: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to store response']);
+            Log::error("Error storing response: {$e->getMessage()}", ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Failed to store response'], 500);
         }
     }
 }
