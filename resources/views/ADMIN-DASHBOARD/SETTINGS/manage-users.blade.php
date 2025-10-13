@@ -103,8 +103,11 @@ function openDetailsModal(userId) {
     document.getElementById('details-contact').textContent = userData.contact;
 
     // Set profile image (if available)
-    const profileImage = userData.profile ? userData.profile : 'default-profile-image-url';  // Default image URL
-    document.getElementById('details-profile').src = `data:image/png;base64,${profileImage}`;
+const profileImage = userData.profile
+  ? `data:image/png;base64,${userData.profile}`
+  : '/images/profile.png'; // or use the Blade asset() path if this runs server-side
+document.getElementById('details-profile').src = profileImage;
+
 
     // Show the modal
     document.getElementById('details-modal').classList.remove('hidden');
