@@ -155,10 +155,11 @@ Indicent blade */
   th, td{ padding: 8px 10px !important; font-size: 12px; }
 }
 
-/* --- Hide a couple of columns on tiny screens; Action stays visible --- */
 @media (max-width: 480px){
-  .col-datetime, .col-index{ display: none; }
+  .col-datetime{ display: none; }               /* keep date/time hidden */
+  .col-index{ display: table-cell !important; } /* keep # visible */
 }
+
 
 /* --- Modals never exceed viewport; scroll inside --- */
 .modal-panel{ max-height:85vh; overflow-y:auto; }
