@@ -73,10 +73,11 @@
   z-index: 1040; display: none;
 }
 
-/* desktop unchanged */
+/* always show the button */
 @media (min-width: 769px){
-  .sidebar-toggle{ display: none; }
+  .sidebar-toggle{ display: inline-flex; }  /* was: none */
 }
+
 
 /* phone: off-canvas drawer */
 @media (max-width: 768px){
@@ -190,8 +191,8 @@ Indicent blade */
 <body resetReloadTimer()>
 
     <!-- Mobile menu button + backdrop (must be OUTSIDE the sidebar) -->
-<button style="background-color: E87F2E" class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
-  <i style="background-color: #fff" class="fas fa-bars"></i>
+<button style="background-color: #E87F2E" class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
+  <i  class="fas fa-bars"></i>
 </button>
 <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
 
