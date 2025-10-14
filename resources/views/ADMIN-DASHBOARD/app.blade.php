@@ -157,7 +157,6 @@ Indicent blade */
 }
 
 @media (max-width: 480px){
-  .col-datetime{ display: none; }               /* keep date/time hidden */
   .col-index{ display: table-cell !important; } /* keep # visible */
 }
 
