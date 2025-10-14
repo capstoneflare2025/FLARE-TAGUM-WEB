@@ -53,7 +53,9 @@
         overflow-y: auto;
         }
 
-/* ── Hamburger button ─────────────────────────────────────────── */
+
+
+        /* hamburger button */
 .sidebar-toggle{
   position: fixed; top: 12px; left: 12px;
   z-index: 1100; width: 40px; height: 40px;
@@ -64,60 +66,42 @@
   cursor: pointer;
 }
 
-/* ── Backdrop (mobile drawer) ─────────────────────────────────── */
+/* dim background behind drawer */
 .sidebar-backdrop{
   position: fixed; inset: 0;
   background: rgba(0,0,0,.4);
   z-index: 1040; display: none;
 }
 
-/* ── Smooth transitions ───────────────────────────────────────── */
-.sidebar{ transition: transform .25s ease, width .25s ease; }
-.main-content{ transition: margin-left .25s ease; }
-
-/* Always show the button (desktop too) */
+/* desktop unchanged */
 @media (min-width: 769px){
-  .sidebar-toggle{ display: inline-flex; }
-
-  /* Desktop baseline (matches your current layout) */
-  .sidebar{ transform: translateX(0); }          /* visible */
-  .main-content{ margin-left: 260px; }           /* your existing spacing */
-
-  /* Desktop collapsed state (toggled by body.sidebar-closed) */
-  body.sidebar-closed .sidebar{ transform: translateX(-100%); }
-  body.sidebar-closed .main-content{ margin-left: 0; }
-
-  /* Backdrop not needed on desktop */
-  .sidebar-backdrop{ display: none !important; }
+  .sidebar-toggle{ display: none; }
 }
 
-/* ── Mobile: off-canvas drawer ────────────────────────────────── */
+/* phone: off-canvas drawer */
 @media (max-width: 768px){
   body{ overflow-x: hidden; }
+
   .sidebar-toggle{ display: inline-flex; }
 
   .sidebar{
     position: fixed; top: 0; left: 0;
     height: 100vh;
     width: 78vw; max-width: 320px;
-    transform: translateX(-100%);   /* closed by default */
+    transform: translateX(-100%);
+    transition: transform .25s ease;
     z-index: 1050;
   }
   .sidebar.open{ transform: translateX(0); }
   .sidebar-backdrop.show{ display: block; }
 
-  /* Content uses full width on phones */
+  /* content should use full width on mobile */
   .main-content{ margin: 0; padding: 16px; }
 
-  /* Slightly smaller sidebar typography */
+  /* small typography tweaks */
   .sidebar h2{ font-size: 18px; margin-bottom: 24px; }
   .sidebar img.logo{ width: 120px; height: auto; }
   .sidebar a{ font-size: 16px; padding: 12px 14px; }
-}
-
-/* Optional: respect reduced-motion */
-@media (prefers-reduced-motion: reduce){
-  .sidebar, .main-content{ transition: none; }
 }
 
 
@@ -127,8 +111,8 @@
 <body resetReloadTimer()>
 
     <!-- Mobile menu button + backdrop (must be OUTSIDE the sidebar) -->
-<button style="background-color: #E87F2E" class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
-  <i class="fas fa-bars"></i>
+<button style="background-color: E87F2E" class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
+  <i style="background-color: #fff" class="fas fa-bars"></i>
 </button>
 <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
 
