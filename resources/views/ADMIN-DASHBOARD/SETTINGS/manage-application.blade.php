@@ -1,4 +1,4 @@
-<div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl details-panel" style="height: 650px;">
+<div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl " style="height: 650px;">
   <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Manage Report Application</h1>
 
   <!-- Report Type Dropdown -->

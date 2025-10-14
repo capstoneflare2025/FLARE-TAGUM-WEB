@@ -55,28 +55,28 @@
 
 
 
-        /* hamburger button */
-.sidebar-toggle{
-  position: fixed; top: 12px; left: 12px;
-  z-index: 1100; width: 40px; height: 40px;
-  border: none; border-radius: 8px;
-  background: #E00024; color:#fff;
-  display: none; align-items:center; justify-content:center;
-  box-shadow: 0 4px 12px rgba(0,0,0,.25);
-  cursor: pointer;
-}
+            /* hamburger button */
+    .sidebar-toggle{
+    position: fixed; top: 12px; left: 12px;
+    z-index: 1100; width: 40px; height: 40px;
+    border: none; border-radius: 8px;
+    background: #E00024; color:#fff;
+    display: none; align-items:center; justify-content:center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    cursor: pointer;
+    }
 
-/* dim background behind drawer */
-.sidebar-backdrop{
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.4);
-  z-index: 1040; display: none;
-}
+    /* dim background behind drawer */
+    .sidebar-backdrop{
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 1040; display: none;
+    }
 
-/* always show the button */
-@media (min-width: 769px){
-  .sidebar-toggle{ display: none; }   /* <-- hides it on desktop */
-}
+    /* always show the button */
+    @media (min-width: 769px){
+    .sidebar-toggle{ display: none; }   /* <-- hides it on desktop */
+    }
 
 
 /* phone: off-canvas drawer */
@@ -127,7 +127,8 @@
 
 /* --- Modals: keep within viewport (portrait & landscape) --- */
 .modal-panel {
-  max-height: 85vh;
+  max-height: 1000px;
+  margin-left: 250px;
   overflow-y: auto;
 }
 
