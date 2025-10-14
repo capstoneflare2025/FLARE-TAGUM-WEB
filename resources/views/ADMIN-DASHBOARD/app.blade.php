@@ -75,7 +75,7 @@
 
 /* always show the button */
 @media (min-width: 769px){
-  .sidebar-toggle{ display: inline-flex; }  /* was: none */
+  .sidebar-toggle{ display: none; }   /* <-- hides it on desktop */
 }
 
 
@@ -157,6 +157,7 @@ Indicent blade */
 }
 
 @media (max-width: 480px){
+  .col-datetime{ display: table-cell !important; }               /* keep date/time hidden */
   .col-index{ display: table-cell !important; } /* keep # visible */
 }
 
