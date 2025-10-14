@@ -106,10 +106,47 @@
         background-color: #E00024;
         color: white;
     }
+
+
+
+    /* === Settings: mobile-friendly scaffold (additive) === */
+
+/* Make the left sidebar scrollable and always reachable */
+#sidebar{
+  position: sticky;
+  top: 0;
+  max-height: calc(94svh - 12px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;           /* cosmetic */
+}
+
+/* Wrapper should not be hard-fixed to 710px (we'll override safely) */
+.settings-frame{ height: auto !important; }
+
+/* When viewport height is short (phone landscape), let main cards scroll inside */
+.details-panel{
+  /* desktop/portrait: natural height */
+  max-height: none;
+  overflow: visible;
+}
+/* short screens (landscape phones, split view, etc.) */
+@media (max-height: 520px){
+  .details-panel{
+    height: auto !important;                      /* beat inline fixed heights */
+    max-height: calc(100svh - 120px) !important;  /* leave room for header */
+    overflow: auto;
+  }
+}
+
+/* Optional: nicer sidebar scrollbar */
+#sidebar::-webkit-scrollbar{ width: 8px; }
+#sidebar::-webkit-scrollbar-thumb{ background:#bdbdbd; border-radius:8px; }
+
 </style>
 
 @section('content')
-    <div class="flex flex-col md:flex-row" style="height: 710px;">
+    <div class="flex flex-col md:flex-row settings-frame" style="height: 710px;">
         <h1 class="text-xl font-bold mb-6 md:ml-10">Settings</h1>
 
         <!-- Sidebar -->

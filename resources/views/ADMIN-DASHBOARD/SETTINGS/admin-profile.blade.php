@@ -1,5 +1,5 @@
 <!-- Admin Profile (Blade) -->
-<div class="bg-white p-8 rounded-lg shadow w-full  mx-auto" style="height: 650px;">
+<div class="bg-white p-8 rounded-lg shadow details-panel w-full  mx-auto" style="height: 650px;">
   <h1 class="text-3xl font-bold text-gray-800 mb-6">Admin Profile</h1>
 
   <form id="admin-form" method="POST">
