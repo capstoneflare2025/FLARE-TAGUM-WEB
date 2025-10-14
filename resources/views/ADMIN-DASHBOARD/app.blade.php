@@ -127,8 +127,7 @@
 
 /* --- Modals: keep within viewport (portrait & landscape) --- */
 .modal-panel {
-  max-height: 1000px;
-  margin-left: 250px;
+  max-height: 85vh;
   overflow-y: auto;
 }
 
