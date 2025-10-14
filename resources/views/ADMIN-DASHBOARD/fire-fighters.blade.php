@@ -19,7 +19,7 @@
     </div>
 
     <div class="w-full overflow-x-auto">
-      <table class="min-w-full table-auto">
+      <table class="min-w-full table-auto responsive-table table-xs">
         <thead>
           <tr class="bg-gray-100 align-top">
             <th class="px-4 py-2 text-left text-gray-600">Fire Fighter ID</th>

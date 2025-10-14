@@ -104,6 +104,84 @@
   .sidebar a{ font-size: 16px; padding: 12px 14px; }
 }
 
+/* FIRE FIGHTERS BLADE */
+
+/* --- Table: prevent squish & allow horizontal scroll --- */
+.responsive-table {
+  min-width: 900px; /* keep columns readable; scrolls on smaller screens */
+}
+
+/* --- Small-screen tuning --- */
+@media (max-width: 640px){
+  .table-xs th, .table-xs td { padding: 8px 10px; font-size: 12px; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+  .chips-xs { font-size: 11px; }
+}
+
+/* --- Long text (emails) should wrap instead of overflowing --- */
+.break-anywhere {
+  overflow-wrap: anywhere; /* modern browsers */
+  word-break: break-word;  /* fallback */
+}
+
+/* --- Modals: keep within viewport (portrait & landscape) --- */
+.modal-panel {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Slightly lower height on short, landscape phones */
+@media (max-height: 480px) and (orientation: landscape){
+  .modal-panel {
+    max-height: 78vh;
+  }
+}
+
+/*
+Indicent blade */
+
+/* --- Generic table responsiveness --- */
+.table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.table-min{ min-width: 900px; }              /* keeps columns readable; scrolls on small screens */
+.cell-nowrap{ white-space:nowrap; }
+.break-anywhere{ overflow-wrap:anywhere; word-break:break-word; }
+
+/* --- Filter row: stack on phones --- */
+.filters-grid{ display:grid; grid-template-columns:1fr; gap:.5rem; }
+@media (min-width: 640px){ .filters-grid{ grid-template-columns: repeat(3, 1fr); } }
+
+/* --- Shrink paddings/fonts for very small screens --- */
+@media (max-width: 640px){
+  th, td{ padding: 8px 10px !important; font-size: 12px; }
+}
+
+/* --- Hide a couple of columns on tiny screens; Action stays visible --- */
+@media (max-width: 480px){
+  .col-datetime, .col-index{ display: none; }
+}
+
+/* --- Modals never exceed viewport; scroll inside --- */
+.modal-panel{ max-height:85vh; overflow-y:auto; }
+@media (max-height: 480px) and (orientation: landscape){
+  .modal-panel{ max-height:78vh; }
+}
+
+/* --- Location modal: override desktop wide layout on mobile --- */
+@media (max-width: 768px){
+  #locationModal .modal-shell{
+    width: 95vw !important;
+    margin-left: 0 !important;
+    max-width: 95vw !important;
+  }
+  #routeMap, #fenceMap{ height: 300px !important; }
+  #routeInfo{ max-height: 100px !important; }
+}
+
+/* --- Toast: don’t collide with sidebar on small screens --- */
+@media (max-width: 768px){
+  #toast{ right: 1rem !important; margin-right: 0 !important; left: 1rem; }
+}
+
 
 
     </style>

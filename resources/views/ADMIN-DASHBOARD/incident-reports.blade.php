@@ -83,14 +83,14 @@
   <div id="allReportsSection" class="bg-white p-6 shadow rounded-lg">
     <h2 class="text-xl font-semibold text-gray-700 mb-4">All Reports</h2>
 
-    <div class="max-h-96 overflow-y-auto">
-      <table class="min-w-full table-auto">
+    <div class="table-wrap max-h-96 overflow-y-auto">
+      <table class="min-w-full table-auto table-min">
         <thead>
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
-            <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-datetime">Date & Time</th>
             <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -147,14 +147,14 @@
   ========================================================= -->
   <div id="fireReportsSection" class="bg-white p-6 shadow rounded-lg hidden">
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Incident Reports</h2>
-    <div class="max-h-96 overflow-y-auto">
-      <table class="min-w-full table-auto">
+    <div class="table-wrap max-h-96 overflow-y-auto">
+      <table class="min-w-full table-auto  table-min">
         <thead>
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
-            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusFireDatePicker()">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer col-datetime" onclick="focusFireDatePicker()">Date & Time</th>
             <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -215,7 +215,7 @@
                 data-report='@json($report)' data-type="fireReports">
               <td class="px-4 py-2">{{ $index + 1 }}</td>
               <td class="px-4 py-2">{{ $report['type'] ?? 'N/A' }}</td>
-              <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
+              <td class="px-4 py-2 break-anywhere">{{ $report['exactLocation'] ?? 'N/A' }}</td>
               <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
               <td class="px-4 py-2 status text-{{ $color }}-500">{{ $status }}</td>
               <td class="px-4 py-2 space-x-2 flex items-center">
@@ -255,14 +255,14 @@
   ========================================================= -->
   <div id="otherEmergencySection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Other Emergency Incidents</h2>
-    <div class="max-h-96 overflow-y-auto">
-      <table class="min-w-full table-auto">
+    <div class="table-wrap max-h-96 overflow-y-auto">
+      <table class="min-w-full table-auto  table-min">
         <thead>
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
             <th class="px-4 py-2 text-left text-gray-600">Emergency Type</th>
-            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusOtherDatePicker()">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer col-datetime" onclick="focusOtherDatePicker()">Date & Time</th>
             <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -327,7 +327,7 @@
             <tr id="reportRow{{ $report['id'] }}" class="border-b"
                 data-report='@json($report)' data-type="otherEmergency">
               <td class="px-4 py-2">{{ $index + 1 }}</td>
-              <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
+              <td class="px-4 py-2 break-anywhere">{{ $report['exactLocation'] ?? 'N/A' }}</td>
               <td class="px-4 py-2">{{ $report['emergencyType'] ?? 'N/A' }}</td>
               <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
               <td class="px-4 py-2 status text-{{ $color }}-500">{{ $status }}</td>
@@ -362,14 +362,14 @@
   ========================================================= -->
   <div id="emsSection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Emergency Medical Services</h2>
-    <div class="max-h-96 overflow-y-auto">
-      <table class="min-w-full table-auto">
+    <div class="table-wrap max-h-96 overflow-y-auto">
+      <table class="min-w-full table-auto table-min">
         <thead>
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
-            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer" onclick="focusEmsDatePicker()">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600 cursor-pointer col-datetime" onclick="focusEmsDatePicker()">Date & Time</th>
             <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -429,7 +429,7 @@
                 data-report='@json($report)' data-type="emsReports">
               <td class="px-4 py-2">{{ $index + 1 }}</td>
               <td class="px-4 py-2">{{ $report['type'] ?? 'N/A' }}</td>
-              <td class="px-4 py-2">{{ $report['exactLocation'] ?? 'N/A' }}</td>
+              <td class="px-4 py-2 break-anywhere">{{ $report['exactLocation'] ?? 'N/A' }}</td>
               <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['reportTime'] ?? 'N/A' }}</td>
               <td class="px-4 py-2 status text-{{ $color }}-500">{{ $status }}</td>
               <td class="px-4 py-2 space-x-2 flex items-center">
@@ -462,13 +462,13 @@
   ========================================================= -->
   <div id="smsReportsSection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
     <h2 class="text-xl font-semibold text-gray-700 mb-4">SMS Reports</h2>
-    <div class="max-h-96 overflow-y-auto">
-      <table class="min-w-full table-auto">
+    <div class="table-wrap max-h-96 overflow-y-auto">
+      <table class="min-w-full table-auto table-min">
         <thead>
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
-            <th class="px-4 py-2 text-left text-gray-600">Date & Time</th>
+            <th class="px-4 py-2 text-left text-gray-600 col-datetime">Date & Time</th>
             <th class="px-4 py-2 text-left text-gray-600">Status</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -524,7 +524,7 @@
             <tr id="reportRow{{ $report['id'] }}" class="border-b"
                 data-report='@json($report)' data-type="smsReports">
               <td class="px-4 py-2">{{ $index + 1 }}</td>
-              <td class="px-4 py-2">{{ $report['location'] ?? 'N/A' }}</td>
+              <td class="px-4 py-2 break-anywhere">{{ $report['location'] ?? 'N/A' }}</td>
               <td class="px-4 py-2">{{ $report['date'] ?? 'N/A' }} {{ $report['time'] ?? 'N/A' }}</td>
               <td class="px-4 py-2 status text-{{ $color }}-500">{{ $status }}</td>
                 <td class="px-4 py-2 space-x-2 flex items-center">
@@ -559,8 +559,8 @@
   ========================================================= -->
 <div id="fireFighterChatSection" class="bg-white p-6 shadow rounded-lg mt-6 hidden">
   <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Fighter Chat Reports</h2>
-  <div class="max-h-96 overflow-y-auto">
-    <table class="min-w-full table-auto">
+  <div class="table-wrap max-h-96 overflow-y-auto">
+    <table class="min-w-full table-auto table-min">
       <thead>
         <tr class="bg-gray-100">
           <th class="px-4 py-2 text-left text-gray-600">#</th>
@@ -641,7 +641,7 @@
      FF CHAT: MESSAGE MODAL
 =========================== -->
 <div id="ffChatMessageModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center">
-  <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative">
+  <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative  modal-panel">
     <h3 class="text-lg font-semibold mb-2 text-gray-800">
       Message Station: <span id="ffChatMsgStationName" class="text-blue-700"></span>
     </h3>
@@ -706,7 +706,7 @@
   = Modal: Fire Message
   ========================================================= -->
   <div id="fireMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-lg p-6 w-full max-w-6xl shadow-lg relative">
+    <div class="bg-white rounded-lg p-6 w-full max-w-6xl shadow-lg relative  modal-panel">
       <h2 class="text-lg font-semibold mb-4 text-gray-800" id="fireMessageNameValue"></h2>
 
       <div class="mb-4">
@@ -729,7 +729,7 @@
   = Modal: Other Emergency Message
   ========================================================= -->
   <div id="otherEmergencyMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative  modal-panel">
       <h3 class="text-lg font-semibold mb-4 text-gray-800">Other Emergency Incident Chat
         <span id="otherEmergencyMessageIncidentId" class="text-sm text-gray-500"></span>
       </h3>
@@ -749,7 +749,7 @@
   = Modal: EMS Message
   ========================================================= -->
   <div id="emsMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl shadow-lg relative  modal-panel">
       <h3 class="text-lg font-semibold mb-4 text-gray-800">EMS Incident Chat
         <span id="emsMessageIncidentId" class="text-sm text-gray-500"></span>
       </h3>
@@ -769,7 +769,7 @@
   = Modal: Location (Route & Geofence Maps)
   ========================================================= -->
   <div id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-lg p-6 w-full shadow-lg relative"
+    <div class="bg-white rounded-lg p-6 w-full shadow-lg relative modal-shell"
          style="max-width: 1100px; width: calc(100% - 280px); margin-left: 350px;">
       <h3 class="text-lg font-semibold mb-4 text-gray-800">Report Location</h3>
 
