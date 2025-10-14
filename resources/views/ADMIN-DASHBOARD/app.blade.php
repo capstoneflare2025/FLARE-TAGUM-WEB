@@ -53,9 +53,7 @@
         overflow-y: auto;
         }
 
-
-
-        /* hamburger button */
+/* ── Hamburger button ─────────────────────────────────────────── */
 .sidebar-toggle{
   position: fixed; top: 12px; left: 12px;
   z-index: 1100; width: 40px; height: 40px;
@@ -66,42 +64,60 @@
   cursor: pointer;
 }
 
-/* dim background behind drawer */
+/* ── Backdrop (mobile drawer) ─────────────────────────────────── */
 .sidebar-backdrop{
   position: fixed; inset: 0;
   background: rgba(0,0,0,.4);
   z-index: 1040; display: none;
 }
 
-/* desktop unchanged */
+/* ── Smooth transitions ───────────────────────────────────────── */
+.sidebar{ transition: transform .25s ease, width .25s ease; }
+.main-content{ transition: margin-left .25s ease; }
+
+/* Always show the button (desktop too) */
 @media (min-width: 769px){
-  .sidebar-toggle{ display: none; }
+  .sidebar-toggle{ display: inline-flex; }
+
+  /* Desktop baseline (matches your current layout) */
+  .sidebar{ transform: translateX(0); }          /* visible */
+  .main-content{ margin-left: 260px; }           /* your existing spacing */
+
+  /* Desktop collapsed state (toggled by body.sidebar-closed) */
+  body.sidebar-closed .sidebar{ transform: translateX(-100%); }
+  body.sidebar-closed .main-content{ margin-left: 0; }
+
+  /* Backdrop not needed on desktop */
+  .sidebar-backdrop{ display: none !important; }
 }
 
-/* phone: off-canvas drawer */
+/* ── Mobile: off-canvas drawer ────────────────────────────────── */
 @media (max-width: 768px){
   body{ overflow-x: hidden; }
-
   .sidebar-toggle{ display: inline-flex; }
 
   .sidebar{
     position: fixed; top: 0; left: 0;
     height: 100vh;
     width: 78vw; max-width: 320px;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
+    transform: translateX(-100%);   /* closed by default */
     z-index: 1050;
   }
   .sidebar.open{ transform: translateX(0); }
   .sidebar-backdrop.show{ display: block; }
 
-  /* content should use full width on mobile */
+  /* Content uses full width on phones */
   .main-content{ margin: 0; padding: 16px; }
 
-  /* small typography tweaks */
+  /* Slightly smaller sidebar typography */
   .sidebar h2{ font-size: 18px; margin-bottom: 24px; }
   .sidebar img.logo{ width: 120px; height: auto; }
   .sidebar a{ font-size: 16px; padding: 12px 14px; }
+}
+
+/* Optional: respect reduced-motion */
+@media (prefers-reduced-motion: reduce){
+  .sidebar, .main-content{ transition: none; }
 }
 
 
@@ -111,7 +127,7 @@
 <body resetReloadTimer()>
 
     <!-- Mobile menu button + backdrop (must be OUTSIDE the sidebar) -->
-<button class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
+<button style="background-color: #E87F2E" class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
   <i class="fas fa-bars"></i>
 </button>
 <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
@@ -144,19 +160,27 @@
 
 <script>
 
-      function toggleSidebar(force){
-    const sidebar = document.querySelector('.sidebar');
+     function toggleSidebar(force){
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const sidebar  = document.querySelector('.sidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
-    const willOpen = (typeof force === 'boolean') ? force : !sidebar.classList.contains('open');
 
-    if (willOpen){
-      sidebar.classList.add('open');
-      backdrop && backdrop.classList.add('show');
-      document.body.style.overflow = 'hidden';
+    if (isMobile){
+      const willOpen = (typeof force === 'boolean') ? force : !sidebar.classList.contains('open');
+      if (willOpen){
+        sidebar.classList.add('open');
+        backdrop && backdrop.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      } else {
+        sidebar.classList.remove('open');
+        backdrop && backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+      }
     } else {
-      sidebar.classList.remove('open');
-      backdrop && backdrop.classList.remove('show');
-      document.body.style.overflow = '';
+      // desktop: toggle collapsed state on the body
+      document.body.classList.toggle('sidebar-closed',
+        (typeof force === 'boolean') ? !force : !document.body.classList.contains('sidebar-closed')
+      );
     }
   }
 
@@ -167,11 +191,11 @@
     }
   });
 
-  // Close on ESC
+  // ESC to close (mobile drawer, or reopen desktop if you want)
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.querySelector('.sidebar.open')){
-      toggleSidebar(false);
-    }
+    if (e.key !== 'Escape') return;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile && document.querySelector('.sidebar.open')) toggleSidebar(false);
   });
 /* =========================
  * Globals

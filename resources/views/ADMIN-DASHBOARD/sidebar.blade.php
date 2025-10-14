@@ -1,6 +1,6 @@
 <div class="sidebar">
     <!-- Logo Image -->
-    <img style="width: 170px; height: 170px;" src="{{ asset('images/station-logo.png')}}" alt="Logo" class="logo">
+    <img style="width: 170px; height: 170px; margin-top: 50px;" src="{{ asset('images/station-logo.png')}}" alt="Logo" class="logo">
 
     <h2 id="station-name"></h2>
 
