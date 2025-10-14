@@ -37,7 +37,85 @@
     .send-btn{background:#E00024;color:#fff;}
     .send-btn[disabled]{opacity:.6;cursor:not-allowed;}
     #resetMsg{margin-top:8px;font-size:14px;min-height:18px;}
-  </style>
+
+    /* ---------------------- RESPONSIVE FIXES ---------------------- */
+    @media (max-width: 992px) {
+      body {
+        flex-direction: column;
+        overflow:auto;
+        height:auto;
+        padding:20px 0;
+      }
+
+      .container {
+        flex-direction: column;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        height: auto;
+        align-items: center;
+      }
+
+      .welcome-box {
+        width: 100%;
+        height: auto;
+        margin-bottom: 20px;
+        border-radius: 15px;
+      }
+
+      .welcome-box .logo {
+        width: 80%;
+        max-width: 280px;
+      }
+
+      .login-box {
+        position: relative;
+        width: 90%;
+        max-width: 400px;
+        height: auto;
+        margin: 0 auto;
+        left: 0;
+        padding: 25px 20px;
+      }
+
+      .login-btn {
+        width: 100%;
+        margin: 20px 0 0 0;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .welcome-box {
+        padding: 15px;
+      }
+
+      .welcome-box h2 {
+        font-size: 1.2rem;
+      }
+
+      .login-box {
+        padding: 20px 15px;
+      }
+
+      .input-group {
+        height: 45px;
+      }
+
+      .input-group input {
+        font-size: 13px;
+      }
+
+      .login-btn {
+        font-size: 14px;
+        padding: 10px;
+      }
+
+      .forgot-link {
+        font-size: 13px;
+      }
+    }
+</style>
+
 </head>
 <body>
   <video autoplay muted loop playsinline class="video-bg">
