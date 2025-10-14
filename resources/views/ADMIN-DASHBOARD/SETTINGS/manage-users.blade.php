@@ -1,26 +1,35 @@
 <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl" style="height: 650px;">
-  <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Manage Users</h1>
+  <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Manage Users</h1>
 
-
+  <!-- Search -->
+  <div class="mb-4">
+    <input
+      id="user-search"
+      type="text"
+      placeholder="Search name or email…"
+      class="w-full sm:w-96 px-4 py-2 border rounded-lg focus:outline-none focus:ring"
+    />
+  </div>
 
   <!-- Table for Users -->
   <div class="overflow-x-auto relative">
-    <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+    <div class="shadow border-b border-gray-200 sm:rounded-lg">
       <table class="min-w-full table-auto">
-        <thead class="sticky top-0 bg-gray-100">
+        <thead class="sticky top-0 bg-gray-100 z-20">
           <tr class="bg-gray-100">
-            <th class="px-4 py-2 text-left text-gray-600">#</th>
-            <th class="px-4 py-2 text-left text-gray-600">Name</th>
+            <th class="px-4 py-2 text-left text-gray-600 sticky-col col-idx w-16">#</th>
+            <th class="px-4 py-2 text-left text-gray-600 sticky-col col-name w-64">Name</th>
             <th class="px-4 py-2 text-left text-gray-600">Contact</th>
             <th class="px-4 py-2 text-left text-gray-600">Email</th>
+            <th class="px-4 py-2 text-left text-gray-600">Date</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
         </thead>
-        <tbody id="user-table-body">
-          <!-- Data will be dynamically populated here -->
-        </tbody>
+        <tbody id="user-table-body"></tbody>
       </table>
-      <div id="no-data-message" class="text-center text-gray-500 p-4 hidden">No users available in the database.</div>
+      <div id="no-data-message" class="text-center text-gray-500 p-4 hidden">
+        No users available in the database.
+      </div>
     </div>
   </div>
 </div>
@@ -30,6 +39,39 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+
+ // ---------- Helpers ----------
+ const pad = (n) => String(n).padStart(2, '0');
+
+function getTs(u) {
+  // Prefer numeric timestamp
+  if (typeof u?.createdAt === 'number') return u.createdAt;
+
+  // Accept either createdDate/createdTime OR date/time
+  const d = u?.createdDate || u?.date || '';
+  const t = u?.createdTime || u?.time || '00:00:00';
+  if (!d) return 0;
+
+  const ms = Date.parse(`${d}T${t}`);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+function fmtDT(u) {
+  // Accept either createdDate or date
+  const d = u?.createdDate || u?.date || '';
+  if (!d) return '—';
+  return d;
+}
+
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
   const firebaseConfig = {
     apiKey: "AIzaSyCrjSyOI-qzCaJptEkWiRfEuaG28ugTmdE",
@@ -45,11 +87,80 @@
   // Initialize Firebase
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-  const db = firebase.database();
-  const userTableBody = document.getElementById("user-table-body");
-  const noDataMessage = document.getElementById("no-data-message");
+    const db = firebase.database();
+    const userRef = db.ref('Users');
+    const userTableBody = document.getElementById('user-table-body');
+    const noDataMessage = document.getElementById('no-data-message');
+    const searchInput = document.getElementById('user-search');
 
-  const userRef = db.ref('Users');
+    let cache = [];   // [{id, ...user}]
+    let filterQ = '';
+
+      function render() {
+      userTableBody.innerHTML = '';
+
+      // sort newest first
+      const sorted = [...cache].sort((a, b) => getTs(b) - getTs(a));
+
+      // filter by name or email (case-insensitive)
+    const filtered = q
+  ? sorted.filter(u => {
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const query = q.toLowerCase();
+      return name.startsWith(query) || email.startsWith(query);
+    })
+  : sorted;
+
+
+
+      if (filtered.length === 0) {
+        noDataMessage.classList.remove('hidden');
+        return;
+      }
+      noDataMessage.classList.add('hidden');
+
+      filtered.forEach((u, index) => {
+        const row = document.createElement('tr');
+        row.className = 'bg-white border-b hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="px-4 py-2 text-sm font-medium text-gray-900 sticky-col col-idx w-16 bg-white z-10">${index + 1}</td>
+          <td class="px-4 py-2 text-sm font-medium text-gray-900 sticky-col col-name w-64 bg-white z-10">${u.name || ''}</td>
+          <td class="px-4 py-2 text-sm text-gray-500">${u.contact || ''}</td>
+          <td class="px-4 py-2 text-sm text-gray-500">${u.email || ''}</td>
+          <td class="px-4 py-2 text-sm text-gray-500">${fmtDT(u)}</td>
+          <td class="px-4 py-2 text-sm text-gray-500">
+            <button class="text-blue-600 hover:text-blue-800" onclick="openDetailsModal('${u.id}')">
+              <img src="{{ asset('images/details.png') }}" alt="View" class="w-6 h-6 inline-block">
+            </button>
+            <button class="text-red-600 hover:text-red-800 ml-2" onclick="openDeleteModal('${u.id}')">
+              <img src="{{ asset('images/delete.png') }}" alt="Delete" class="w-6 h-6 inline-block">
+            </button>
+          </td>
+        `;
+        userTableBody.appendChild(row);
+      });
+    }
+
+    // realtime fetch
+    userRef.on('value', (snap) => {
+      const obj = snap.val();
+      if (!obj) {
+        cache = [];
+        render();
+        return;
+      }
+      cache = Object.entries(obj).map(([id, u]) => ({ id, ...u }));
+      render();
+    });
+
+    // search
+    const handleSearch = debounce(e => {
+      filterQ = e.target.value || '';
+      render();
+    }, 200);
+    searchInput.addEventListener('input', handleSearch);
+
 
   // Listen for changes to the Users node in real-time
   userRef.on('value', (snapshot) => {
@@ -65,6 +176,7 @@
           <td class="px-4 py-2 text-sm font-medium text-gray-900">${userData.name}</td>
           <td class="px-4 py-2 text-sm text-gray-500">${userData.contact}</td>
           <td class="px-4 py-2 text-sm text-gray-500">${userData.email}</td>
+            <td class="px-4 py-2 text-sm text-gray-500">${fmtDT(userData)}</td>  <!-- ⭐ add this -->
           <td class="px-4 py-2 text-sm text-gray-500">
             <!-- View Button with Custom Icon -->
             <button class="text-blue-600 hover:text-blue-800" onclick="openDetailsModal('${key}')">
@@ -302,8 +414,6 @@ function deleteUserFromDB(userId) {
 </div>
 
 
-
-
 <!-- Modal for Delete Confirmation -->
 <div id="delete-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center z-50">
   <div class="bg-white p-6 rounded-lg w-96 text-center">
@@ -402,4 +512,11 @@ function deleteUserFromDB(userId) {
     max-height: 500px;
     overflow-y: auto;
   }
+
+
+    /* Sticky header + sticky first two columns */
+  .sticky-col { position: sticky; background: #fff; }
+  .col-idx { left: 0; z-index: 11; }
+  .col-name { left: 4rem; z-index: 11; } /* 4rem ≈ w-16 of first col */
+  thead.sticky, thead.sticky th, thead.z-20, thead.z-20 th { z-index: 20; }
 </style>
