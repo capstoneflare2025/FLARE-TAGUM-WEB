@@ -55,9 +55,67 @@
 
 
 
+        /* hamburger button */
+.sidebar-toggle{
+  position: fixed; top: 12px; left: 12px;
+  z-index: 1100; width: 40px; height: 40px;
+  border: none; border-radius: 8px;
+  background: #E00024; color:#fff;
+  display: none; align-items:center; justify-content:center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  cursor: pointer;
+}
+
+/* dim background behind drawer */
+.sidebar-backdrop{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 1040; display: none;
+}
+
+/* desktop unchanged */
+@media (min-width: 769px){
+  .sidebar-toggle{ display: none; }
+}
+
+/* phone: off-canvas drawer */
+@media (max-width: 768px){
+  body{ overflow-x: hidden; }
+
+  .sidebar-toggle{ display: inline-flex; }
+
+  .sidebar{
+    position: fixed; top: 0; left: 0;
+    height: 100vh;
+    width: 78vw; max-width: 320px;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    z-index: 1050;
+  }
+  .sidebar.open{ transform: translateX(0); }
+  .sidebar-backdrop.show{ display: block; }
+
+  /* content should use full width on mobile */
+  .main-content{ margin: 0; padding: 16px; }
+
+  /* small typography tweaks */
+  .sidebar h2{ font-size: 18px; margin-bottom: 24px; }
+  .sidebar img.logo{ width: 120px; height: auto; }
+  .sidebar a{ font-size: 16px; padding: 12px 14px; }
+}
+
+
+
     </style>
 </head>
 <body resetReloadTimer()>
+
+    <!-- Mobile menu button + backdrop (must be OUTSIDE the sidebar) -->
+<button class="sidebar-toggle" aria-label="Open menu" onclick="toggleSidebar()">
+  <i class="fas fa-bars"></i>
+</button>
+<div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
 
     @include('ADMIN-DASHBOARD.sidebar')
 
@@ -85,6 +143,36 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
 <script>
+
+      function toggleSidebar(force){
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const willOpen = (typeof force === 'boolean') ? force : !sidebar.classList.contains('open');
+
+    if (willOpen){
+      sidebar.classList.add('open');
+      backdrop && backdrop.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    } else {
+      sidebar.classList.remove('open');
+      backdrop && backdrop.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Close drawer when a sidebar link is clicked (mobile)
+  document.addEventListener('click', (e) => {
+    if (window.matchMedia('(max-width: 768px)').matches && e.target.closest('.sidebar a')){
+      toggleSidebar(false);
+    }
+  });
+
+  // Close on ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.querySelector('.sidebar.open')){
+      toggleSidebar(false);
+    }
+  });
 /* =========================
  * Globals
  * ========================= */
