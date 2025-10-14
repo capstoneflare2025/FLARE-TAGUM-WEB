@@ -4,6 +4,8 @@
 
     <h2 id="station-name"></h2>
 
+
+
     {{-- <!-- Dashboard Link (Active when on the dashboard route) -->
     <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
         <img src="{{ asset('images/dashboard.png')}}" alt="Dashboard">Dashboard
@@ -122,4 +124,24 @@
         background-color: #E00024;
         color: white;
     }
+
+    /* Make the sidebar scrollable on short screens */
+.sidebar{
+  position: fixed;
+  top: 0; left: 0;
+  height: 100dvh;              /* better than 100vh on mobile */
+  overflow-y: auto;            /* <- the key bit */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* prevent body scrolling under it */
+  /* your existing width/background/etc. stay the same */
+}
+
+/* Optional: small safety padding at the bottom so the last item isn’t
+   hidden behind iOS/Android browser bars */
+.sidebar::after{
+  content: "";
+  display: block;
+  height: 16px;
+}
+
 </style>
