@@ -138,8 +138,34 @@
   }
 }
 
+
 /*
 Indicent blade */
+body.modal-open { overflow: hidden; }
+
+/* ✅ kill panel scrolling and keep it centered + inside the viewport */
+#fireMessageModal .modal-panel,
+#otherEmergencyMessageModal .modal-panel,
+#emsMessageModal .modal-panel{
+  max-height: none !important;        /* override your 85vh */
+  overflow: visible !important;        /* no panel scrollbars */
+  width: min(96vw, 1100px);            /* never overflow viewport width */
+  border-radius: 12px;
+}
+
+/* smaller width for the two medium modals */
+#otherEmergencyMessageModal .modal-panel,
+#emsMessageModal .modal-panel{
+  width: min(96vw, 680px);
+}
+
+/* only the thread scrolls if messages are long (not the whole modal) */
+#fireMessageThread,
+#otherEmergencyMessageThread,
+#emsMessageThread{
+  max-height: 60vh;        /* adjust if you want more/less */
+  overflow-y: auto;
+}
 
 /* --- Generic table responsiveness --- */
 .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }

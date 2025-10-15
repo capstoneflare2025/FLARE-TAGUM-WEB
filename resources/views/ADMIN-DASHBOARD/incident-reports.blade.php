@@ -705,7 +705,7 @@
   <!-- =========================================================
   = Modal: Fire Message
   ========================================================= -->
-  <div id="fireMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div style="margin-left: 250px;" id="fireMessageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
     <div class="bg-white rounded-lg p-6 w-full max-w-6xl shadow-lg relative  modal-panel">
       <h2 class="text-lg font-semibold mb-4 text-gray-800" id="fireMessageNameValue"></h2>
 
