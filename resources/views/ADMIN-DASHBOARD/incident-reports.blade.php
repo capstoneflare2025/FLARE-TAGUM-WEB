@@ -768,7 +768,7 @@
   <!-- =========================================================
   = Modal: Location (Route & Geofence Maps)
   ========================================================= -->
-  <div id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div style="margin-left: -100px;" id="locationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
     <div class="bg-white rounded-lg p-6 w-full shadow-lg relative modal-shell"
          style="max-width: 1100px; width: calc(100% - 280px); margin-left: 350px;">
       <h3 class="text-lg font-semibold mb-4 text-gray-800">Report Location</h3>
@@ -792,7 +792,6 @@
       </button>
     </div>
   </div>
-
 
 
 <!-- =========================================================
