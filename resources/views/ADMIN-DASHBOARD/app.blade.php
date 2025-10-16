@@ -139,6 +139,7 @@
 }
 
 
+
 /*
 Indicent blade */
 body.modal-open { overflow: hidden; }
