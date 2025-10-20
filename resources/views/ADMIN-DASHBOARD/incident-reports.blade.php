@@ -38,15 +38,15 @@
     <form id="assignForm" class="space-y-3">
       <label class="flex items-center gap-2">
         <input type="radio" name="station" value="CanocotanFireFighterAccount" class="accent-blue-600" required>
-        <span>Canocotan Fire Fighter</span>
+        <span>Tagum City Central Fire Station</span>
       </label>
       <label class="flex items-center gap-2">
         <input type="radio" name="station" value="LaFilipinaFireFighterAccount" class="accent-blue-600">
-        <span>La Filipina Fire Fighter</span>
+        <span>La Filipina Fire Sub-Station</span>
       </label>
       <label class="flex items-center gap-2">
         <input type="radio" name="station" value="MabiniFireFighterAccount" class="accent-blue-600">
-        <span>Mabini Fire Fighter</span>
+        <span>Tagum City West Fire Sub-Station</span>
       </label>
 
       <div class="flex justify-end gap-2 pt-4">
