@@ -85,7 +85,7 @@
 
     <div class="table-wrap max-h-96 overflow-y-auto">
       <table class="min-w-full table-auto table-min">
-        <thead class="sticky top-0">
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-100">
             <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
@@ -149,7 +149,7 @@
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Incident Reports</h2>
     <div class="table-wrap max-h-96 overflow-y-auto">
       <table class="min-w-full table-auto  table-min">
-        <thead class="sticky top-0">
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-100">
             <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
@@ -257,7 +257,7 @@
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Other Emergency Incidents</h2>
     <div class="table-wrap max-h-96 overflow-y-auto">
       <table class="min-w-full table-auto  table-min">
-        <thead class="sticky top-0">
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-100">
             <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
@@ -364,7 +364,7 @@
     <h2 class="text-xl font-semibold text-gray-700 mb-4">Emergency Medical Services</h2>
     <div class="table-wrap max-h-96 overflow-y-auto">
       <table class="min-w-full table-auto table-min">
-        <thead class="sticky top-0">
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-100">
             <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Type</th>
@@ -464,7 +464,7 @@
     <h2 class="text-xl font-semibold text-gray-700 mb-4">SMS Reports</h2>
     <div class="table-wrap max-h-96 overflow-y-auto">
       <table class="min-w-full table-auto table-min">
-        <thead class="sticky top-0">
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-100">
             <th class="px-4 py-2 text-left text-gray-600 col-index">#</th>
             <th class="px-4 py-2 text-left text-gray-600">Location</th>
@@ -561,7 +561,7 @@
   <h2 class="text-xl font-semibold text-gray-700 mb-4">Fire Fighter Chat Reports</h2>
   <div class="table-wrap max-h-96 overflow-y-auto">
     <table class="min-w-full table-auto table-min">
-      <thead class="sticky top-0">
+      <thead class="sticky top-0 z-10">
         <tr class="bg-gray-100">
           <th class="px-4 py-2 text-left text-gray-600">#</th>
           <th class="px-4 py-2 text-left text-gray-600">Name</th>

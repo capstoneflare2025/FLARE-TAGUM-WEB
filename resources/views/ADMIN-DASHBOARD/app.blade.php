@@ -138,6 +138,27 @@
 }
 
 
+/* Modal overlay above everything */
+.modal{
+  position: fixed;
+  inset: 0;
+  display: none;                /* show via JS */
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,.5);
+  z-index: 9999;                /* ⬅ higher than any header */
+}
+
+/* Modal panel */
+.modal-content{
+  position: relative;
+  z-index: 10000;               /* just above the overlay */
+}
+
+/* Optional: when modal open, stop background scroll */
+body.modal-open { overflow: hidden; }
+
+
 
 /*
 Indicent blade */
