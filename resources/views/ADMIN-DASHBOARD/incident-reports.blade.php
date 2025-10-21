@@ -1450,9 +1450,9 @@ function closeFFChatMessageModal(){
  * EMAIL → STATION & LIVE GEO WRITE (for firefighter logins)
  * ========================================================= */
 const EMAIL_TO_STATION = {
-  'mabiniff01@gmail.com':     'MabiniFireFighterAccount',
-  'lafilipinaff01@gmail.com': 'LaFilipinaFireFighterAccount',
-  'canocotanff01@gmail.com':  'CanocotanFireFighterAccount'
+  'tcwestfiresubstation@gmail.com':     'MabiniFireFighterAccount',
+  'lafilipinafire@gmail.com': 'LaFilipinaFireFighterAccount',
+  'bfp_tagumcity@yahoo.com':  'CanocotanFireFighterAccount'
 };
 
 function stationKeyFromEmail(email){
