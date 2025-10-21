@@ -12,34 +12,32 @@
       <button id="addFirefighterBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg">
         Add New Fire Fighter
       </button>
-      <div class="text-sm text-gray-600">
-        <span class="font-semibold">Rows:</span>
-        <span id="rowCount">0</span>
-      </div>
+
     </div>
 
     <div class="w-full overflow-x-auto">
       <table class="min-w-full table-auto responsive-table table-xs">
         <thead>
           <tr class="bg-gray-100 align-top">
-            <th class="px-4 py-2 text-left text-gray-600">Fire Fighter ID</th>
+            <th class="px-4 py-2 text-left text-gray-600">ID</th>
             <th class="px-4 py-2 text-left text-gray-600">Name</th>
-            <th class="px-4 py-2 text-left text-gray-600">Email</th>
             <th class="px-4 py-2 text-left text-gray-600">Contact</th>
-            <th class="px-4 py-2 text-left text-gray-600">Birthday</th>
             <th class="px-4 py-2 text-left text-gray-600">
               <div class="flex items-center gap-2">
                 <span>Station</span>
                 <!-- FILTER lives IN the column header -->
                 <select id="stationFilter" class="px-2 py-1 border rounded text-sm text-gray-700">
                   <option value="ALL">All Stations</option>
-                  <option value="CanocotanFireFighter">Canocotan Fire Station</option>
-                  <option value="MabiniFireFighter">Mabini Fire Station</option>
-                  <option value="LaFilipinaFireFighter">La Filipina Fire Station</option>
+                  <option value="TagumCityCentralFireStationFireFighter">Tagum City Central Fire Station</option>
+                  <option value="TagumCityWestFireSubStationFireFighter">Tagum City West Fire Sub-Station</option>
+                  <option value="LaFilipinaFireSubStationFireFighter">La Filipina Fire Sub-Station</option>
                 </select>
               </div>
             </th>
-            <th class="px-4 py-2 text-left text-gray-600">Actions</th>
+          <!-- thead -->
+        <th class="px-4 py-2 text-center text-gray-600 w-20 sm:w-24">Actions</th>
+
+
           </tr>
         </thead>
         <tbody id="firefighterTableBody"></tbody>
@@ -116,9 +114,9 @@
         <div class="mb-4">
           <label class="block text-gray-700 font-semibold">Station:</label>
           <select id="addStationSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
-            <option value="CanocotanFireFighter" data-name="Canocotan Fire Station">Canocotan Fire Station</option>
-            <option value="MabiniFireFighter" data-name="Mabini Fire Station">Mabini Fire Station</option>
-            <option value="LaFilipinaFireFighter" data-name="La Filipina Fire Station">La Filipina Fire Station</option>
+            <option value="TagumCityCentralFireStationFireFighter" data-name="Tagum City Central Fire Station">Tagum City Central Fire Station</option>
+            <option value="TagumCityWestFireSubStationFireFighter" data-name="Tagum City West Fire Sub-Station">Tagum City West Fire Sub-Station</option>
+            <option value="LaFilipinaFireSubStationFireFighter" data-name="La Filipina Fire Sub-Station">La Filipina Fire Sub-Station</option>
           </select>
         </div>
 
@@ -173,34 +171,39 @@ const firebaseConfig = {
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-/* ------------ Paths / Buckets ------------ */
-const ROOT = "TagumCityCentralFireStation/FireFighter";
+/* ------------ Root collection ------------ */
+const ROOT_ALL = "TagumCityCentralFireStation/FireFighter/AllFireFighter";
 
+/* ------------ Station buckets ------------ */
 const BUCKETS = {
-  CanocotanFireFighter:   { name: "Canocotan Fire Station",   key: "CanocotanFireFighter",   prefix: "CANOCOTAN"   },
-  MabiniFireFighter:      { name: "Mabini Fire Station",      key: "MabiniFireFighter",      prefix: "MABINI"      },
-  LaFilipinaFireFighter:  { name: "La Filipina Fire Station", key: "LaFilipinaFireFighter",  prefix: "LAFILIPINA"  },
+  TagumCityCentralFireStationFireFighter: {
+    name: "Tagum City Central Fire Station",
+    prefix: "TCCFS"
+  },
+  TagumCityWestFireSubStationFireFighter: {
+    name: "Tagum City West Fire Sub-Station",
+    prefix: "TCWFSS"
+  },
+  LaFilipinaFireSubStationFireFighter: {
+    name: "La Filipina Fire Sub-Station",
+    prefix: "LFFSS"
+  }
 };
-
 const bucketKeys = Object.keys(BUCKETS);
 
 /* ------------ Elements ------------ */
 const stationFilter        = document.getElementById('stationFilter');
 const rowCount             = document.getElementById('rowCount');
 const tbody                = document.getElementById('firefighterTableBody');
-
 const addBtn               = document.getElementById('addFirefighterBtn');
 const addModal             = document.getElementById('addModal');
 const addForm              = document.getElementById('addFirefighterForm');
 const submitBtn            = document.getElementById('submitBtn');
-
 const recordKeyInput       = document.getElementById('firefighterRecordKey');
 const recordBucketInput    = document.getElementById('firefighterBucketKey');
 const addStationSelect     = document.getElementById('addStationSelect');
 const fireStationNamePrev  = document.getElementById('fireStationNamePreview');
-
 const closeAddModalBtn     = document.getElementById('closeAddModalBtn');
-
 const viewModal            = document.getElementById('viewModal');
 const closeViewModalBtn    = document.getElementById('closeViewModalBtn');
 
@@ -208,13 +211,33 @@ const closeViewModalBtn    = document.getElementById('closeViewModalBtn');
 let bucketListeners = {};
 let bucketData      = {};  // { bucketKey: { autoKey: firefighterObj } }
 
-/* ------------ Helpers ------------ */
-function makeReadableId(prefix) {
-  const y = new Date().getFullYear();
-  const p = firebase.database().ref('tmp').push();
-  const k = p.key || Math.random().toString(36).slice(2);
-  p.remove();
-  return `${prefix}-${y}-${k.slice(-5).toUpperCase()}`;
+/* ------------ Helper functions ------------ */
+function getCurrentYear() {
+  return new Date().getFullYear().toString(); // e.g., "2025"
+}
+
+function buildReadableId(prefix, seq, year) {
+  const seqStr = String(seq).padStart(3, '0');
+  return `${prefix}-${seqStr}${year}`;
+}
+
+/* Generates next sequential ID based on last record in the same bucket */
+async function generateSequentialId(bucketKey) {
+  const ref = firebase.database().ref(`${ROOT_ALL}/${bucketKey}`);
+  const snap = await ref.once('value');
+  const year = getCurrentYear();
+  const data = snap.val() || {};
+  const ids = Object.values(data)
+    .map(f => f.id)
+    .filter(id => id && id.includes(year));
+
+  let max = 0;
+  ids.forEach(id => {
+    const numPart = parseInt(id.split('-')[1]?.substring(0, 3));
+    if (!isNaN(numPart) && numPart > max) max = numPart;
+  });
+  const nextSeq = max + 1;
+  return buildReadableId(BUCKETS[bucketKey].prefix, nextSeq, year);
 }
 
 function currentReadableNameFromSelect(selectEl) {
@@ -223,33 +246,22 @@ function currentReadableNameFromSelect(selectEl) {
 }
 
 function mergedRows() {
-  // flatten all buckets into one array with bucket info
   const rows = [];
   for (const bucketKey of bucketKeys) {
     const map = bucketData[bucketKey] || {};
     Object.entries(map).forEach(([autoKey, ff]) => {
-      rows.push({
-        _autoKey: autoKey,
-        _bucket: bucketKey,
-        ...ff
-      });
+      rows.push({ _autoKey: autoKey, _bucket: bucketKey, ...ff });
     });
   }
   return rows;
 }
 
 function applyFilterAndRender() {
-  const filterKey = stationFilter.value; // "ALL" or a bucket key
+  const filterKey = stationFilter.value;
   let rows = mergedRows();
+  if (filterKey !== 'ALL') rows = rows.filter(r => r.fireStationKey === filterKey);
 
-  if (filterKey !== 'ALL') {
-    rows = rows.filter(r => r.fireStationKey === filterKey);
-  }
-
-  // Sort by name
   rows.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-  // Render
   tbody.innerHTML = '';
   for (const row of rows) {
     const tr = document.createElement('tr');
@@ -257,33 +269,32 @@ function applyFilterAndRender() {
     tr.innerHTML = `
       <td class="px-4 py-2">${row.id || ''}</td>
       <td class="px-4 py-2 font-semibold">${row.name || ''}</td>
-      <td class="px-4 py-2">${row.email || ''}</td>
       <td class="px-4 py-2">${row.contact || ''}</td>
-      <td class="px-4 py-2">${row.birthday || ''}</td>
       <td class="px-4 py-2">${row.fireStationName || BUCKETS[row._bucket]?.name || ''}</td>
-      <td class="px-4 py-2 space-x-2">
-        <button class="viewBtn text-blue-500 hover:underline"
-                data-bucket="${row._bucket}"
-                data-key="${row._autoKey}">View</button>
-        <button class="editBtn text-yellow-500 hover:underline"
-                data-bucket="${row._bucket}"
-                data-key="${row._autoKey}">Edit</button>
-        <button class="deleteBtn text-red-500 hover:underline"
-                data-bucket="${row._bucket}"
-                data-key="${row._autoKey}">Delete</button>
-      </td>
-    `;
+      <td class="px-4 py-2 text-center">
+        <div class="flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap">
+          <button class="viewBtn" data-bucket="${row._bucket}" data-key="${row._autoKey}">
+            <img src="/images/details.png" class="h-4 w-4 sm:h-5 sm:w-5" alt="View">
+          </button>
+          <button class="editBtn" data-bucket="${row._bucket}" data-key="${row._autoKey}">
+            <img src="/images/edit.png" class="h-4 w-4 sm:h-5 sm:w-5" alt="Edit">
+          </button>
+          <button class="deleteBtn" data-bucket="${row._bucket}" data-key="${row._autoKey}">
+            <img src="/images/delete.png" class="h-4 w-4 sm:h-5 sm:w-5" alt="Delete">
+          </button>
+        </div>
+      </td>`;
     tbody.appendChild(tr);
   }
 
-  rowCount.textContent = rows.length.toString();
+  rowCount.textContent = rows.length;
   bindRowButtons();
 }
 
 /* duplicates across all buckets by name+email */
 function checkDuplicate(name, email) {
   const promises = bucketKeys.map(bk =>
-    firebase.database().ref(`${ROOT}/${bk}`).once('value').then(s => {
+    firebase.database().ref(`${ROOT_ALL}/${bk}`).once('value').then(s => {
       const v = s.val() || {};
       return Object.values(v).some(ff => ff.name === name && ff.email === email);
     })
@@ -291,9 +302,9 @@ function checkDuplicate(name, email) {
   return Promise.all(promises).then(list => list.some(Boolean));
 }
 
-/* ------------ Realtime listeners (per bucket) ------------ */
+/* ------------ Realtime listeners ------------ */
 function attachBucket(bucketKey) {
-  const ref = firebase.database().ref(`${ROOT}/${bucketKey}`);
+  const ref = firebase.database().ref(`${ROOT_ALL}/${bucketKey}`);
   const cb = ref.on('value', snap => {
     bucketData[bucketKey] = snap.val() || {};
     applyFilterAndRender();
@@ -301,70 +312,56 @@ function attachBucket(bucketKey) {
   bucketListeners[bucketKey] = { ref, cb };
 }
 
-function detachAll() {
-  for (const k in bucketListeners) {
-    const { ref, cb } = bucketListeners[k];
-    try { ref.off('value', cb); } catch(e){}
-  }
-  bucketListeners = {};
-}
-
 /* ------------ Row actions ------------ */
 function bindRowButtons() {
-  // View
   document.querySelectorAll('.viewBtn').forEach(btn => {
     btn.onclick = () => {
       const bucket = btn.dataset.bucket;
-      const key    = btn.dataset.key;
-      firebase.database().ref(`${ROOT}/${bucket}/${key}`).once('value').then(s => {
+      const key = btn.dataset.key;
+      firebase.database().ref(`${ROOT_ALL}/${bucket}/${key}`).once('value').then(s => {
         const d = s.val() || {};
-        document.getElementById('viewFirefighterId').innerText       = d.id || '';
-        document.getElementById('viewFirefighterName').innerText     = d.name || '';
-        document.getElementById('viewFirefighterEmail').innerText    = d.email || '';
-        document.getElementById('viewFirefighterContact').innerText  = d.contact || '';
+        document.getElementById('viewFirefighterId').innerText = d.id || '';
+        document.getElementById('viewFirefighterName').innerText = d.name || '';
+        document.getElementById('viewFirefighterEmail').innerText = d.email || '';
+        document.getElementById('viewFirefighterContact').innerText = d.contact || '';
         document.getElementById('viewFirefighterBirthday').innerText = d.birthday || '';
-        document.getElementById('viewFirefighterStation').innerText  = d.fireStationName || BUCKETS[bucket]?.name || '';
+        document.getElementById('viewFirefighterStation').innerText = d.fireStationName || BUCKETS[bucket]?.name || '';
         viewModal.classList.remove('hidden');
       });
     };
   });
 
-  // Edit (keeps bucket fixed; you can add “move station” later if desired)
   document.querySelectorAll('.editBtn').forEach(btn => {
     btn.onclick = () => {
       const bucket = btn.dataset.bucket;
-      const key    = btn.dataset.key;
-      firebase.database().ref(`${ROOT}/${bucket}/${key}`).once('value').then(s => {
+      const key = btn.dataset.key;
+      firebase.database().ref(`${ROOT_ALL}/${bucket}/${key}`).once('value').then(s => {
         const d = s.val() || {};
         document.getElementById('modalTitle').innerText = 'Edit Fire Fighter';
         submitBtn.innerText = 'Update Fire Fighter';
-
         addForm.reset();
-        recordKeyInput.value    = key;
-        recordBucketInput.value = bucket;
 
-        // lock station selection (edit does not move between buckets)
+        recordKeyInput.value = key;
+        recordBucketInput.value = bucket;
         addStationSelect.value = bucket;
         fireStationNamePrev.value = d.fireStationName || BUCKETS[bucket].name;
         addStationSelect.disabled = true;
 
-        document.getElementById('name').value     = d.name || '';
-        document.getElementById('email').value    = d.email || '';
-        document.getElementById('contact').value  = d.contact || '';
+        document.getElementById('name').value = d.name || '';
+        document.getElementById('email').value = d.email || '';
+        document.getElementById('contact').value = d.contact || '';
         document.getElementById('birthday').value = d.birthday || '';
-
         addModal.classList.remove('hidden');
       });
     };
   });
 
-  // Delete
   document.querySelectorAll('.deleteBtn').forEach(btn => {
     btn.onclick = () => {
       const bucket = btn.dataset.bucket;
-      const key    = btn.dataset.key;
+      const key = btn.dataset.key;
       if (confirm('Delete this firefighter?')) {
-        firebase.database().ref(`${ROOT}/${bucket}/${key}`).remove();
+        firebase.database().ref(`${ROOT_ALL}/${bucket}/${key}`).remove();
       }
     };
   });
@@ -375,13 +372,10 @@ addBtn.onclick = () => {
   document.getElementById('modalTitle').innerText = 'Add New Fire Fighter';
   submitBtn.innerText = 'Add Fire Fighter';
   addForm.reset();
-  recordKeyInput.value    = '';
+  recordKeyInput.value = '';
   recordBucketInput.value = '';
-
-  // default station in add modal = first option
   addStationSelect.disabled = false;
   fireStationNamePrev.value = currentReadableNameFromSelect(addStationSelect);
-
   addModal.classList.remove('hidden');
 };
 
@@ -393,65 +387,59 @@ closeAddModalBtn.onclick  = () => addModal.classList.add('hidden');
 closeViewModalBtn.onclick = () => viewModal.classList.add('hidden');
 
 /* ------------ Save (Add/Update) ------------ */
-addForm.onsubmit = (e) => {
+addForm.onsubmit = async (e) => {
   e.preventDefault();
 
-  const editingKey   = recordKeyInput.value.trim();        // empty means ADD
-  const editingBucket= recordBucketInput.value.trim();     // empty means ADD
-
-  const name     = document.getElementById('name').value.trim();
-  const email    = document.getElementById('email').value.trim();
-  const contact  = document.getElementById('contact').value.trim();
+  const editingKey = recordKeyInput.value.trim();
+  const editingBucket = recordBucketInput.value.trim();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const contact = document.getElementById('contact').value.trim();
   const birthday = document.getElementById('birthday').value;
-
-  // For ADD
-  const addBucketKey = addStationSelect.value;             // e.g., "MabiniFireFighter"
-  const addBucket    = BUCKETS[addBucketKey];
+  const addBucketKey = addStationSelect.value;
+  const addBucket = BUCKETS[addBucketKey];
   const fireStationName = fireStationNamePrev.value || addBucket?.name || '';
 
   if (!editingKey) {
-    // ADD path
-    checkDuplicate(name, email).then(dup => {
-      if (dup) { alert('A firefighter with the same name and email already exists.'); return; }
+    if (await checkDuplicate(name, email)) {
+      alert('A firefighter with the same name and email already exists.');
+      return;
+    }
 
-      const ref = firebase.database().ref(`${ROOT}/${addBucketKey}`);
-      const newKey = ref.push().key;
-      const data = {
-        id: makeReadableId(addBucket.prefix),
-        name, email, contact, birthday,
-        fireStationKey: addBucket.key,
-        fireStationName: fireStationName
-      };
-      ref.child(newKey).set(data).then(() => addModal.classList.add('hidden'));
-    });
+    const ref = firebase.database().ref(`${ROOT_ALL}/${addBucketKey}`);
+    const newKey = ref.push().key;
+    const id = await generateSequentialId(addBucketKey);
+    const data = {
+      id, name, email, contact, birthday,
+      fireStationKey: addBucketKey,
+      fireStationName
+    };
+    await ref.child(newKey).set(data);
+    addModal.classList.add('hidden');
     return;
   }
 
-  // EDIT path (fixed bucket)
-  const path = `${ROOT}/${editingBucket}/${editingKey}`;
-  firebase.database().ref(path).once('value').then(s => {
-    const old = s.val() || {};
-    const changedIdentity = (old.name !== name) || (old.email !== email);
+  const path = `${ROOT_ALL}/${editingBucket}/${editingKey}`;
+  const s = await firebase.database().ref(path).once('value');
+  const old = s.val() || {};
+  const changedIdentity = (old.name !== name) || (old.email !== email);
 
-    const proceed = () => {
-      const data = {
-        id: old.id || null,
-        name, email, contact, birthday,
-        fireStationKey: old.fireStationKey || editingBucket,
-        fireStationName: old.fireStationName || BUCKETS[editingBucket]?.name || ''
-      };
-      firebase.database().ref(path).set(data).then(() => addModal.classList.add('hidden'));
+  const proceed = async () => {
+    const data = {
+      id: old.id || null,
+      name, email, contact, birthday,
+      fireStationKey: old.fireStationKey || editingBucket,
+      fireStationName: old.fireStationName || BUCKETS[editingBucket]?.name || ''
     };
+    await firebase.database().ref(path).set(data);
+    addModal.classList.add('hidden');
+  };
 
-    if (changedIdentity) {
-      checkDuplicate(name, email).then(dup => {
-        if (dup) { alert('A firefighter with the same name and email already exists.'); return; }
-        proceed();
-      });
-    } else {
-      proceed();
-    }
-  });
+  if (changedIdentity && await checkDuplicate(name, email)) {
+    alert('A firefighter with the same name and email already exists.');
+  } else {
+    await proceed();
+  }
 };
 
 /* ------------ Filter change ------------ */
@@ -459,8 +447,9 @@ stationFilter.addEventListener('change', applyFilterAndRender);
 
 /* ------------ Bootstrap ------------ */
 window.addEventListener('DOMContentLoaded', () => {
-  // Attach listeners for all buckets; render merges them
   bucketKeys.forEach(attachBucket);
 });
 </script>
+
+
 @endsection

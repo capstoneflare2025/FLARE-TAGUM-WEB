@@ -20,7 +20,7 @@
             <th class="px-4 py-2 text-left text-gray-600 sticky-col col-idx w-16">#</th>
             <th class="px-4 py-2 text-left text-gray-600 sticky-col col-name w-64">Name</th>
             <th class="px-4 py-2 text-left text-gray-600">Contact</th>
-            <th class="px-4 py-2 text-left text-gray-600">Email</th>
+
             <th class="px-4 py-2 text-left text-gray-600">Date</th>
             <th class="px-4 py-2 text-left text-gray-600">Action</th>
           </tr>
@@ -175,7 +175,7 @@ function fmtDT(u) {
           <td class="px-4 py-2 text-sm font-medium text-gray-900">${index + 1}</td>
           <td class="px-4 py-2 text-sm font-medium text-gray-900">${userData.name}</td>
           <td class="px-4 py-2 text-sm text-gray-500">${userData.contact}</td>
-          <td class="px-4 py-2 text-sm text-gray-500">${userData.email}</td>
+
             <td class="px-4 py-2 text-sm text-gray-500">${fmtDT(userData)}</td>  <!-- ⭐ add this -->
           <td class="px-4 py-2 text-sm text-gray-500">
             <!-- View Button with Custom Icon -->

@@ -105,6 +105,7 @@
   .sidebar a{ font-size: 16px; padding: 12px 14px; }
 }
 
+
 /* FIRE FIGHTERS BLADE */
 
 /* --- Table: prevent squish & allow horizontal scroll --- */
@@ -112,6 +113,11 @@
   min-width: 900px; /* keep columns readable; scrolls on smaller screens */
 }
 
+.table-auto th,
+.table-auto td {
+  text-align: center;
+  vertical-align: middle; /* keeps vertical alignment too */
+}
 /* --- Small-screen tuning --- */
 @media (max-width: 640px){
   .table-xs th, .table-xs td { padding: 8px 10px; font-size: 12px; }
@@ -129,13 +135,6 @@
 .modal-panel {
   max-height: 85vh;
   overflow-y: auto;
-}
-
-/* Slightly lower height on short, landscape phones */
-@media (max-height: 480px) and (orientation: landscape){
-  .modal-panel {
-    max-height: 78vh;
-  }
 }
 
 
