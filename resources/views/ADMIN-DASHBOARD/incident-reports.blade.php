@@ -77,6 +77,7 @@
 
   <br><br>
 
+
   <!-- =========================================================
   = Section: All Reports
   ========================================================= -->
@@ -142,6 +143,7 @@
     </div>
   </div>
 
+
   <!-- =========================================================
   = Section: Fire Incident Reports (no alert level / houses affected)
   ========================================================= -->
@@ -202,7 +204,7 @@
         </thead>
 
         <tbody id="fireReportsBody">
-          @foreach($fireReports as $index => $report)
+          @forelse($fireReports as $index => $report)
             @php
               $statusRaw = $report['status'] ?? 'Pending';
               $status    = ucfirst(strtolower($statusRaw));
@@ -237,7 +239,14 @@
                 </a>
               </td>
             </tr>
-          @endforeach
+
+                @empty
+          <tr id="noFireReportsRow">
+            <td colspan="6" class="text-center text-gray-500 py-4">
+              No reports found.
+            </td>
+          </tr>
+          @endforelse
         </tbody>
       </table>
     </div>
@@ -315,7 +324,7 @@
           </tr>
         </thead>
         <tbody id="otherEmergencyTableBody">
-          @foreach($otherEmergencyReports as $index => $report)
+          @forelse($otherEmergencyReports as $index => $report)
             @php
               $statusRaw = $report['status'] ?? 'Pending';
               $status    = ucfirst(strtolower($statusRaw));
@@ -351,7 +360,15 @@
                 </a>
               </td>
             </tr>
-          @endforeach
+
+       @empty
+          <tr id="noFireReportsRow">
+            <td colspan="6" class="text-center text-gray-500 py-4">
+              No reports found.
+            </td>
+          </tr>
+
+          @endforelse
         </tbody>
       </table>
     </div>
@@ -511,7 +528,7 @@
         </thead>
 
         <tbody id="smsReportsBody">
-          @foreach(($smsReports ?? []) as $index => $report)
+          @forelse(($smsReports ?? []) as $index => $report)
             @php
               $lat = $report['latitude'] ?? null; $lng = $report['longitude'] ?? null;
               $statusRaw = $report['status'] ?? 'Pending';
@@ -547,7 +564,14 @@
                 </td>
 
             </tr>
-          @endforeach
+
+                       @empty
+          <tr id="noFireReportsRow">
+            <td colspan="6" class="text-center text-gray-500 py-4">
+              No reports found.
+            </td>
+          </tr>
+          @endforelse
         </tbody>
       </table>
     </div>
@@ -2350,6 +2374,19 @@ function renderAllReports() {
   if (!body) return;
 
   const rows = buildAllReports();
+
+  // If there's NO data at all → render only the empty state row and bail.
+  if (!rows || rows.length === 0) {
+    body.innerHTML = `
+      <tr id="noAllReportsRow" aria-live="polite">
+        <td colspan="6" class="text-center text-gray-500 py-4 italic">
+          No reports found.
+        </td>
+      </tr>`;
+    return;
+  }
+
+
   body.innerHTML = rows.map((r, i) => {
     const time24  = to24h(r.time) || r.time || 'N/A';
     const dateStr = r.date || 'N/A';
