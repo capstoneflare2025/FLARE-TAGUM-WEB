@@ -35,27 +35,30 @@
       Choose which station will receive this report.
     </p>
 
-    <form id="assignForm" class="space-y-3">
-      <label class="flex items-center gap-2">
-        <input type="radio" name="station" value="CanocotanFireFighterAccount" class="accent-blue-600" required>
-        <span>Tagum City Central Fire Station</span>
-      </label>
-      <label class="flex items-center gap-2">
-        <input type="radio" name="station" value="LaFilipinaFireFighterAccount" class="accent-blue-600">
-        <span>La Filipina Fire Sub-Station</span>
-      </label>
-      <label class="flex items-center gap-2">
-        <input type="radio" name="station" value="MabiniFireFighterAccount" class="accent-blue-600">
-        <span>Tagum City West Fire Sub-Station</span>
-      </label>
+<form id="assignForm" class="space-y-3">
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="station[]" value="CanocotanFireFighterAccount" class="assign-station accent-blue-600">
+    <span>Tagum City Central Fire Station</span>
+  </label>
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="station[]" value="LaFilipinaFireFighterAccount" class="assign-station accent-blue-600">
+    <span>La Filipina Fire Sub-Station</span>
+  </label>
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="station[]" value="MabiniFireFighterAccount" class="assign-station accent-blue-600">
+    <span>Tagum City West Fire Sub-Station</span>
+  </label>
 
-      <div class="flex justify-end gap-2 pt-4">
-        <button type="button" onclick="closeAssignModal()"
-                class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-800">Cancel</button>
-        <button type="submit"
-                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">Assign & Receive</button>
-      </div>
-    </form>
+  <div class="flex justify-end gap-2 pt-4">
+    <button type="button" onclick="closeAssignModal()"
+            class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-800">Cancel</button>
+    <button type="submit" id="assignSubmitBtn"
+            class="px-4 py-2 rounded bg-blue-600 text-white opacity-50 cursor-not-allowed"
+            disabled>Assign & Receive</button>
+  </div>
+</form>
+
+
 
     <button onclick="closeAssignModal()"
             class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
@@ -624,15 +627,16 @@
             <!-- Action: Message, Location (if coords), Details -->
             <td class="px-4 py-2 space-x-3 flex items-center">
               <!-- Message -->
-              <a href="javascript:void(0);"
-                 class="msg-btn inline-flex items-center"
-                 title="Open messages"
-                 aria-label="Open messages"
-                 data-key="fireFighterChatReports|{{ $report['id'] }}"
-                 onclick="openMessageModal('{{ $report['id'] }}', 'fireFighterChatReports')">
-                <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-                <span class="msg-badge hidden">0</span>
-              </a>
+          <a href="javascript:void(0);"
+            class="msg-btn inline-flex items-center"
+            title="Open messages"
+            aria-label="Open messages"
+            data-ff-account="{{ $report['accountKey'] }}"
+            onclick="openFFChatMessageModal('{{ $report['accountKey'] }}')">
+            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+            <span class="msg-badge hidden">0</span>
+            </a>
+
 
               <!-- Location (only if lat/lng exist) -->
               @if(!is_null($lat) && !is_null($lng))
@@ -667,7 +671,7 @@
 <div id="ffChatMessageModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center">
   <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative  modal-panel">
     <h3 class="text-lg font-semibold mb-2 text-gray-800">
-      Message Station: <span id="ffChatMsgStationName" class="text-blue-700"></span>
+      <span id="ffChatMsgStationName" class="text-blue-700"></span>
     </h3>
     <!-- Chat message thread with fixed height and scrollable content -->
     <div id="ffChatMsgThread" class="h-64 overflow-y-auto border border-gray-200 p-3 rounded mb-4 bg-gray-50"></div>
@@ -1136,6 +1140,7 @@ document.addEventListener("DOMContentLoaded", () => {
   hardLoadFF();
 });
 
+
 /* =========================================================
  * FIRE FIGHTER CHAT: LOAD & LIVE SYNC FROM ACCOUNTS
  * Path: TagumCityCentralFireStation/FireFighter/AllFireFighterAccount
@@ -1157,6 +1162,11 @@ const FIREFIGHTER_PATH =
   `${STATION_ROOT}/FireFighter/AllFireFighterAccount`;
 
 const FF_ACCOUNTS_BASE = FIREFIGHTER_PATH;
+const ADMIN_MESSAGES = 'AdminMessages';
+const UNREAD_VALUE   = true;   // we treat true = unread, false = read
+
+
+
 
 function _el(id){ return document.getElementById(id); }
 function _show(id){ _el(id)?.classList.remove('hidden'); }
@@ -1185,6 +1195,7 @@ function loadAllFireFighterAccounts() {
   // Clear before rendering to avoid any duplicate rows
   body.innerHTML = '';
 
+
   firebase.database().ref(FIREFIGHTER_PATH).once('value')
     .then(snap => {
       if (!snap.exists()) {
@@ -1209,41 +1220,50 @@ function loadAllFireFighterAccounts() {
         const name    = v.name    || key;
         const contact = v.contact || 'N/A';
 
-        // ACTIONS: message, location, details
-        return `
-          <tr class="border-b fire-fighter-row">
-            <td class="px-4 py-2">${i + 1}</td>
-            <td class="px-4 py-2 name-cell">${name}</td>
-            <td class="px-4 py-2 contact-cell">${contact}</td>
-            <td class="px-4 py-2 space-x-3 flex items-center">
-              <!-- Message (envelope) -->
-              <a href="javascript:void(0);" title="Message"
-                 class="inline-flex items-center"
-                 onclick="openFFChatMessageModal('${key}')">
-                <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-              </a>
+            return `
+        <tr class="border-b fire-fighter-row">
+        <td class="px-4 py-2">${i + 1}</td>
+        <td class="px-4 py-2 name-cell">${name}</td>
+        <td class="px-4 py-2 contact-cell">${contact}</td>
+        <td class="px-4 py-2 space-x-3 flex items-center">
 
-              <!-- Location (pin) -->
-              <a href="javascript:void(0);" title="Location"
-                 class="inline-flex items-center"
-                 onclick="openFFChatLocationModal('${key}')">
-                <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
-              </a>
+            <!-- Message (envelope) -->
+            <a href="javascript:void(0);" title="Message"
+            class="inline-flex items-center msg-btn"
+            data-key="fireFighterChatReports|${key}"
+            onclick="openFFChatMessageModal('${key}')">
+            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+            <span class="msg-badge hidden">0</span>
+            </a>
 
-              <!-- Details (document) -->
-              <a href="javascript:void(0);" title="Details"
-                 class="inline-flex items-center"
-                 onclick="openFFChatDetailsModal('${key}')">
-                <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
-              </a>
-            </td>
-          </tr>`;
-      }).join('');
+            <!-- Location (pin) -->
+            <a href="javascript:void(0);" title="Location"
+            class="inline-flex items-center"
+            onclick="openFFChatLocationModal('${key}')">
+            <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
+            </a>
+
+            <!-- Details (document) -->
+            <a href="javascript:void(0);" title="Details"
+            class="inline-flex items-center"
+            onclick="openFFChatDetailsModal('${key}')">
+            <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
+            </a>
+        </td>
+        </tr>`;
+
+    }).join('');
 
       body.innerHTML = rows || `
         <tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">
           No firefighter accounts found.
         </td></tr>`;
+
+        initFFChatUnreadBadges();   // start live counters
+
+        // and also once on DOMContentLoaded (covers any Blade-rendered rows on first paint)
+        document.addEventListener('DOMContentLoaded', initFFChatUnreadBadges);
+
     })
     .catch(err => {
       console.error('[FF] Read error:', err);
@@ -1256,6 +1276,46 @@ function loadAllFireFighterAccounts() {
         </tr>`;
     });
 }
+
+
+function getAccountKeyFromRow(btn){
+  // data-key shape: "fireFighterChatReports|{AccountKey}"
+  const raw = btn.getAttribute('data-key') || '';
+  return raw.split('|')[1] || null;
+}
+
+// Attach a listener per station that counts admin unread (isRead === true)
+function initFFChatUnreadBadges() {
+  document.querySelectorAll('#fireFighterChatBody .msg-btn').forEach(btn => {
+    const accountKey = getAccountKeyFromRow(btn);
+    const badge = btn.querySelector('.msg-badge');
+    if (!accountKey || !badge) return;
+
+    const ref = firebase.database()
+      .ref(`${FF_ACCOUNTS_BASE}/${accountKey}/${ADMIN_MESSAGES}`)
+      .orderByChild('isRead')
+      .equalTo(true); // first filter: unread only
+
+    ref.on('value', snap => {
+      let count = 0;
+      snap.forEach(c => {
+        const m = c.val() || {};
+        const sender = String(m.sender || '').toLowerCase();
+        if (sender !== 'admin') count++;  // second filter: not admin
+      });
+
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    });
+  });
+}
+
+
+
 
 /* ---------- DETAILS MODAL ---------- */
 // Pull one station object
@@ -1283,6 +1343,9 @@ function closeFFChatDetailsModal(){ _hide('ffChatDetailsModal'); }
 /* ---------- MESSAGE MODAL (simple live thread) ---------- */
 /* ---------- MESSAGE MODAL (text / image / audio) ---------- */
 /* ---------- MESSAGE MODAL (text / image / audio) ---------- */
+
+
+
 function renderFFChatThread(list = []) {
   const box = _el('ffChatMsgThread');
 
@@ -1381,6 +1444,7 @@ function renderFFChatThread(list = []) {
 
 let __ffChatUnsub = null;
 
+
 async function openFFChatMessageModal(stationKey){
   const nameSpan = _el('ffChatMsgStationName');
   const inputKey = _el('ffChatMsgStationKey');
@@ -1400,6 +1464,31 @@ async function openFFChatMessageModal(stationKey){
     }
 
     const ref = firebase.database().ref(`${FF_ACCOUNTS_BASE}/${stationKey}/AdminMessages`);
+
+        // Mark all currently-unread admin messages as read
+       try {
+    const adminRef = firebase.database()
+        .ref(`${FF_ACCOUNTS_BASE}/${stationKey}/${ADMIN_MESSAGES}`);
+
+    const unreadSnap = await adminRef.orderByChild('isRead').equalTo(true).once('value');
+
+    if (unreadSnap.exists()) {
+        const updates = {};
+        unreadSnap.forEach(c => {
+        const m = c.val() || {};
+        const sender = String(m.sender || '').toLowerCase();
+        if (sender !== 'admin') {                 // only firefighter messages
+            updates[`${c.key}/isRead`] = false;     // mark read
+        }
+        });
+        if (Object.keys(updates).length) await adminRef.update(updates);
+    }
+    } catch (e) {
+    console.warn('[FF Chat] mark-as-read failed:', e);
+    }
+
+
+
     const snapshotToArray = (snap) => {
     const out = [];
     snap.forEach(c => {
@@ -1467,6 +1556,7 @@ function closeFFChatMessageModal(){
     }
   });
 })();
+
 
 
 
@@ -2094,31 +2184,60 @@ function removeRow(id) {
  * ========================================================= */
 
 function insertNewReportRow(report, reportType) {
-  const tableBodyId = reportType === 'fireReports' ? 'fireReportsBody' : 'otherEmergencyTableBody';
+  const tableBodyId = reportType === 'fireReports'
+    ? 'fireReportsBody'
+    : 'otherEmergencyTableBody';
+
   const tableBody = document.getElementById(tableBodyId);
   if (!tableBody) return;
+
+  // Don't duplicate an existing row
   if (document.getElementById(`reportRow${report.id}`)) return;
 
-  report.date       = report.date || new Date().toLocaleDateString();
-  report.reportTime = report.reportTime || new Date().toLocaleTimeString();
+  // 1) Normalize date/time (use 24h so sorting is stable)
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
 
-  function parseDateTime(dateStr, timeStr) {
-    const [day, month, year] = dateStr.split('/');
-    const normalizedYear = year && year.length === 2 ? '20' + year : year;
-    return new Date(`${normalizedYear}-${month}-${day}T${timeStr}`);
+  report.date       = report.date || `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`; // DD/MM/YYYY
+  report.reportTime = to24h(report.reportTime) || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  // 2) Normalize lat/lng for Other Emergency (so Location icon appears even if strings)
+  if (reportType === 'otherEmergency') {
+    const lat = parseFloat(report.latitude);
+    const lng = parseFloat(report.longitude);
+    report.latitude  = Number.isFinite(lat) ? lat : null;
+    report.longitude = Number.isFinite(lng) ? lng : null;
   }
 
+  // 3) Robust DMY + 24h parser for sorting
+  function parseDateTime(dmy, hhmm) {
+    if (!dmy) return 0;
+    const [dd, mm, yy] = String(dmy).split('/');
+    const yyyy = yy && yy.length === 2 ? `20${yy}` : yy;
+    const t24  = to24h(hhmm || '') || '00:00';
+    const dt   = new Date(`${yyyy}-${mm}-${dd}T${t24}:00`);
+    return dt.getTime() || 0;
+  }
+
+  // 4) Insert → sort newest first → render with highlight
   if (reportType === 'fireReports') {
     fireReports.unshift(report);
-    fireReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
+    fireReports.sort((a, b) =>
+      parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime)
+    );
     renderSortedReports(fireReports, 'fireReports', report.id);
   } else {
     otherEmergencyReports.unshift(report);
-    otherEmergencyReports.sort((a, b) => parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime));
+    otherEmergencyReports.sort((a, b) =>
+      parseDateTime(b.date, b.reportTime) - parseDateTime(a.date, a.reportTime)
+    );
     renderSortedReports(otherEmergencyReports, 'otherEmergency', report.id);
   }
+
+  // Keep “All Reports” in sync
   renderAllReports();
 }
+
 
 function insertNewEmsRow(report) {
   const body = document.getElementById('emsBody');
@@ -2189,7 +2308,13 @@ function renderSortedReports(reportsArray, reportType, highlightId = null) {
 
   reportsArray.forEach((report, index) => {
     const rowId = `reportRow${report.id}`;
-    const color = statusColor(capStatus(report.status || 'Unknown'));
+    const statusTxt = capStatus(report.status || 'Unknown');
+    const color = statusColor(statusTxt);
+
+    // ✅ normalize coords once
+    const lat = parseFloat(report.latitude);
+    const lng = parseFloat(report.longitude);
+    const hasLL = Number.isFinite(lat) && Number.isFinite(lng);
 
     const row = document.createElement('tr');
     row.id = rowId;
@@ -2198,43 +2323,48 @@ function renderSortedReports(reportsArray, reportType, highlightId = null) {
     row.setAttribute('data-report', JSON.stringify(report));
     row.setAttribute('data-type', reportType);
 
-    const cells = reportType === 'fireReports'
-      ? `
+    let cells;
+    if (reportType === 'fireReports') {
+      cells = `
         <td class="px-4 py-2">${index + 1}</td>
         <td class="px-4 py-2">${report.type || 'N/A'}</td>
         <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
         <td class="px-4 py-2">${report.date || 'N/A'} ${to24h(report.reportTime) || report.reportTime || 'N/A'}</td>
-        <td class="px-4 py-2 status text-${color}-500">${capStatus(report.status || 'Unknown')}</td>
+        <td class="px-4 py-2 status text-${color}-500">${statusTxt}</td>
         <td class="px-4 py-2 space-x-2 flex items-center">
-          ${Number.isFinite(report.latitude) && Number.isFinite(report.longitude) ? `
-            <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
+          <!-- Message should always be present -->
+          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'fireReports')">
+            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+          </a>
+          ${hasLL ? `
+            <a href="javascript:void(0);" onclick="openLocationModal(${lat}, ${lng})">
               <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
             </a>` : ''}
           <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'fireReports')">
             <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
           </a>
-          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'fireReports')">
-            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-          </a>
-        </td>`
-      : `
+        </td>`;
+    } else {
+      // OTHER EMERGENCY: make order = Message → (Location) → Details
+      cells = `
         <td class="px-4 py-2">${index + 1}</td>
         <td class="px-4 py-2">${report.exactLocation || 'N/A'}</td>
         <td class="px-4 py-2">${report.emergencyType || 'N/A'}</td>
         <td class="px-4 py-2">${report.date || 'N/A'} ${to24h(report.reportTime) || report.reportTime || 'N/A'}</td>
-        <td class="px-4 py-2 status text-${color}-500">${capStatus(report.status || 'Unknown')}</td>
+        <td class="px-4 py-2 status text-${color}-500">${statusTxt}</td>
         <td class="px-4 py-2 space-x-2 flex items-center">
-          ${Number.isFinite(report.latitude) && Number.isFinite(report.longitude) ? `
-            <a href="javascript:void(0);" onclick="openLocationModal(${report.latitude}, ${report.longitude})">
+          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'otherEmergency')">
+            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
+          </a>
+          ${hasLL ? `
+            <a href="javascript:void(0);" onclick="openLocationModal(${lat}, ${lng})">
               <img src="{{ asset('images/location.png') }}" alt="Location" class="w-6 h-6">
             </a>` : ''}
           <a href="javascript:void(0);" onclick="openDetailsModal('${report.id}', 'otherEmergency')">
             <img src="{{ asset('images/details.png') }}" alt="Details" class="w-6 h-6">
           </a>
-          <a href="javascript:void(0);" onclick="openMessageModal('${report.id}', 'otherEmergency')">
-            <img src="{{ asset('images/message.png') }}" alt="Message" class="w-6 h-6">
-          </a>
         </td>`;
+    }
 
     row.innerHTML = cells;
     fragment.appendChild(row);
@@ -2243,8 +2373,24 @@ function renderSortedReports(reportsArray, reportType, highlightId = null) {
   tableBody.innerHTML = '';
   tableBody.appendChild(fragment);
   tableBody.style.visibility = 'visible';
-   ensureMessageBadges();
+  ensureMessageBadges();
 }
+
+
+function hasLL(r = {}) {
+  const lat = parseFloat(r.latitude);
+  const lng = parseFloat(r.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+function normalizeLL(r = {}) {
+  const n = { ...r };
+  const lat = parseFloat(n.latitude);
+  const lng = parseFloat(n.longitude);
+  n.latitude  = Number.isFinite(lat) ? lat : null;
+  n.longitude = Number.isFinite(lng) ? lng : null;
+  return n;
+}
+
 
 
 /* =========================================================
@@ -2957,6 +3103,21 @@ function typeNodeFor(reportType) {
        : 'Unknown';
 }
 
+
+function getSelectedStations() {
+  return Array.from(document.querySelectorAll('#assignForm input[name="station[]"]:checked'));
+}
+
+function updateAssignButton() {
+  const btn = document.getElementById('assignSubmitBtn');
+  const any = getSelectedStations().length > 0;
+  if (!btn) return;
+  btn.disabled = !any;
+  btn.classList.toggle('opacity-50', !any);
+  btn.classList.toggle('cursor-not-allowed', !any);
+}
+
+
 function openAssignModal(incidentId, reportType) {
   // pull the freshest row payload to copy over
   const row = document.getElementById(`reportRow${incidentId}`) ||
@@ -2967,11 +3128,17 @@ function openAssignModal(incidentId, reportType) {
 
   __assignContext = { incidentId, reportType, reportObject: rpt };
 
-  // reset radios & show
   const form = document.getElementById('assignForm');
-  if (form) form.reset();
-  const modal = document.getElementById('assignModal');
-  modal?.classList.remove('hidden');
+  if (form) {
+    form.reset();
+    // ensure listeners for checkbox changes
+    form.querySelectorAll('input[name="station[]"]').forEach(cb => {
+      cb.onchange = updateAssignButton;
+    });
+    // start in correct state (disabled until checked)
+    updateAssignButton();
+  }
+  document.getElementById('assignModal')?.classList.remove('hidden');
 
 }
 
@@ -2980,7 +3147,6 @@ function closeAssignModal() {
   __assignContext = { incidentId: null, reportType: null, reportObject: null };
 }
 
-// submit handler (attach once)
 (() => {
   const form = document.getElementById('assignForm');
   if (!form) return;
@@ -2988,32 +3154,52 @@ function closeAssignModal() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(form);
-    const stationAccountKey = formData.get('station');
+    const btn = document.getElementById('assignSubmitBtn');
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-60', 'cursor-wait'); }
+
+    // Collect multiple selections
+    const selected = Array.from(document.querySelectorAll('input[name="station[]"]:checked'))
+                          .map(i => i.value);
     const { incidentId, reportType, reportObject } = __assignContext || {};
-    if (!stationAccountKey || !incidentId || !reportType) return;
+
+    if (!selected.length) {
+      alert('Please select at least one station.');
+      if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+      return;
+    }
+    if (!incidentId || !reportType) {
+      alert('Missing context for assignment.');
+      if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+      return;
+    }
 
     const typeNode = typeNodeFor(reportType);
     const base = 'TagumCityCentralFireStation/FireFighter/AllFireFighterAccount';
-    const destRef = firebase.database().ref(
-      `${base}/${stationAccountKey}/AllReport/${typeNode}/${incidentId}`
-    );
 
+    // payload written into each station account
     const payload = {
       ...reportObject,
-      assignedStationAccount: stationAccountKey,
+      assignedStationAccounts: selected,   // ← record all assignees
       assignedAt: Date.now(),
-      status: 'Ongoing'           // <-- your desired status
+      status: 'Ongoing'
     };
 
-    let assignedOK = false;
-
-    // --- NETWORK ONLY ---
     try {
-      // 1) write to assignee
-      await destRef.set(payload);
+      // 1) write to each selected station (parallel)
+      const writes = selected.map(stKey => {
+        const destRef = firebase.database()
+          .ref(`${base}/${stKey}/AllReport/${typeNode}/${incidentId}`);
+        return destRef.set(payload);
+      });
 
-      // 2) flip original collection
+      const results = await Promise.allSettled(writes);
+      const failures = results.filter(r => r.status === 'rejected');
+
+      if (failures.length === selected.length) {
+        throw new Error('All assignments failed. Check network/Firebase rules.');
+      }
+
+      // 2) flip original collection to Ongoing (once)
       const n = nodes();
       const srcPath =
         reportType === 'fireReports'    ? n.fireReport :
@@ -3022,39 +3208,36 @@ function closeAssignModal() {
         reportType === 'smsReports'     ? n.sms : null;
 
       if (srcPath) {
-        await firebase.database().ref(`${srcPath}/${incidentId}`).update({ status: 'Ongoing' });
-      }
-
-      assignedOK = true;
-    } catch (err) {
-      console.error('[assign] network error:', err);
-      alert('Failed to assign. Check console / network.');
-      return; // stop here; don’t run UI updates on failure
-    }
-
-    // --- UI (non-fatal) ---
-    if (assignedOK) {
-      try {
-        // If statusColor might be undefined, guard it:
-        const safeStatusColor = typeof statusColor === 'function'
-          ? statusColor
-          : () => 'blue';
-
-        // If your setStatusEverywhere uses statusColor inside,
-        // it won’t crash now; or call with just the string:
-        setStatusEverywhere?.(incidentId, reportType, 'Ongoing');
-
-        showToast?.('Report assigned and marked as Ongoing');
-      } catch (uiErr) {
-        console.warn('[assign] UI update warning:', uiErr);
-        // No alert — the assignment already succeeded
-      } finally {
-        // Close both modals robustly
-        queueMicrotask(() => {
-          closeAssignModal();
-          closeDetailsModal();
+        await firebase.database().ref(`${srcPath}/${incidentId}`).update({
+          status: 'Ongoing',
+          assignedStationAccounts: selected
         });
       }
+
+      // 3) UI updates (non-fatal)
+      try {
+        setStatusEverywhere?.(incidentId, reportType, 'Ongoing');
+        const okCount = selected.length - failures.length;
+        showToast?.(`Assigned to ${okCount} station${okCount>1?'s':''}${failures.length?` (${failures.length} failed)`:''}`);
+      } catch(_) {}
+
+      // Close modals
+      queueMicrotask(() => {
+        closeAssignModal();
+        closeDetailsModal();
+      });
+
+      // If there were partial failures, inform the user
+      if (failures.length) {
+        console.warn('Some assignments failed:', failures);
+        alert(`${failures.length} assignment(s) failed. Check console for details.`);
+      }
+
+    } catch (err) {
+      console.error('[assign] error:', err);
+      alert(err.message || 'Failed to assign.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
     }
   }, { once: true });
 })();
@@ -3105,43 +3288,125 @@ function setStatusEverywhere(incidentId, reportType, newStatus) {
   renderAllReports?.();
 }
 
+// --- helpers ---
+function typeNodeFor(reportType) {
+  return reportType === 'fireReports'      ? 'FireReport'
+       : reportType === 'otherEmergency'   ? 'OtherEmergencyReport'
+       : reportType === 'emsReports'       ? 'EmergencyMedicalServicesReport'
+       : reportType === 'smsReports'       ? 'SmsReport'
+       : 'Unknown';
+}
 
+function normalizeStations(val) {
+  // Accepts ['A','B'] or {A:true,B:true} or null
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === 'object') return Object.keys(val).filter(Boolean);
+  return [];
+}
 
+// --- NEW: fan-out status everywhere ---
+async function fanOutStatus(incidentId, reportType, newStatus) {
+  const ALL           = 'TagumCityCentralFireStation/AllReport';
+  const FF_ROOT       = 'TagumCityCentralFireStation/FireFighter/AllFireFighterAccount';
+  const typeNode      = typeNodeFor(reportType);
+
+  // central collection path by report type
+  const centralPath =
+      reportType === 'fireReports'    ? `${ALL}/FireReport`
+    : reportType === 'otherEmergency' ? `${ALL}/OtherEmergencyReport`
+    : reportType === 'emsReports'     ? `${ALL}/EmergencyMedicalServicesReport`
+    : reportType === 'smsReports'     ? `${ALL}/SmsReport`
+    : null;
+
+  if (!centralPath || typeNode === 'Unknown') return;
+
+  const db   = firebase.database();
+  const ref  = db.ref(`${centralPath}/${incidentId}`);
+
+  // 1) try to read assigned station list from the central record
+  let stations = [];
+  try {
+    const snap = await ref.child('assignedStationAccounts').once('value');
+    stations = normalizeStations(snap.val());
+  } catch (_) {}
+
+  // 2) fallback: scan firefighter accounts and include only stations where the incident exists
+  if (stations.length === 0) {
+    try {
+      const ffSnap = await db.ref(FF_ROOT).once('value');
+      ffSnap.forEach(st => {
+        const stKey = st.key;
+        const exists = ffSnap.child(`${stKey}/AllReport/${typeNode}/${incidentId}`).exists();
+        if (exists) stations.push(stKey);
+      });
+      stations = Array.from(new Set(stations));
+    } catch (_) {}
+  }
+
+  // 3) build one big update
+  const updates = {};
+  // central
+  updates[`${centralPath}/${incidentId}/status`] = newStatus;
+  // optionally timestamp:
+  // updates[`${centralPath}/${incidentId}/updatedAt`] = Date.now();
+
+  // each station that holds this incident
+  stations.forEach(stKey => {
+    updates[`${FF_ROOT}/${stKey}/AllReport/${typeNode}/${incidentId}/status`] = newStatus;
+    // optional mirror timestamp:
+    // updates[`${FF_ROOT}/${stKey}/AllReport/${typeNode}/${incidentId}/updatedAt`] = Date.now();
+  });
+
+  if (Object.keys(updates).length === 0) return;
+
+  await db.ref().update(updates);
+}
+
+// --- REPLACE your existing updateReportStatus with this ---
 async function updateReportStatus(incidentId, reportType, newStatus) {
   const n = nodes();
   if (!n) return;
 
+  // optimistic UI (what you already do)
   const row = document.getElementById(`reportRow${incidentId}`);
-  if (!row) return;
-
-  const report = JSON.parse(row.getAttribute('data-report')) || {};
-  report.status = newStatus;
-  row.setAttribute('data-report', JSON.stringify(report));
-
-  const statusCell = row.querySelector('.status');
-  if (statusCell) {
-    statusCell.innerText = newStatus;
-    statusCell.className = `px-4 py-2 status text-${statusColor(newStatus)}-500`;
+  if (row) {
+    const report = JSON.parse(row.getAttribute('data-report') || '{}');
+    report.status = newStatus;
+    row.setAttribute('data-report', JSON.stringify(report));
+    const statusCell = row.querySelector('.status');
+    if (statusCell) {
+      statusCell.innerText = newStatus;
+      statusCell.className = `px-4 py-2 status text-${statusColor(newStatus)}-500`;
+    }
   }
 
-let path = null;
-if (reportType === 'fireReports')      path = nodes().fireReport;
-else if (reportType === 'otherEmergency') path = nodes().otherEmergency;
-else if (reportType === 'emsReports')     path = nodes().ems;
-else if (reportType === 'smsReports')     path = nodes().sms; // canonical
+  // figure central per-type path (for canonical write)
+  let path = null;
+  if (reportType === 'fireReports')      path = n.fireReport;
+  else if (reportType === 'otherEmergency') path = n.otherEmergency;
+  else if (reportType === 'emsReports')     path = n.ems;
+  else if (reportType === 'smsReports')     path = n.sms;
 
-if (!path) return;
+  try {
+    if (path) {
+      // write central first (keeps your listeners happy even if the fan-out fails)
+      await firebase.database().ref(`${path}/${incidentId}`).update({ status: newStatus });
+    }
 
-firebase.database().ref(`${path}/${incidentId}`).update({ status: newStatus })
-  .then(() => {
-    updateTableStatus?.(incidentId, newStatus);
-    closeDetailsModal();
-    showToast?.(`Status updated to ${newStatus}`);
-  })
-  .catch(console.error);
+    // now fan-out to all firefighter accounts that carry this incident
+    await fanOutStatus(incidentId, reportType, newStatus);
 
-
-  closeDetailsModal();
+    // local UI refreshes
+    try {
+      setStatusEverywhere?.(incidentId, reportType, newStatus);
+      closeDetailsModal?.();
+      showToast?.(`Status updated to ${newStatus} (mirrored to assigned stations)`);
+    } catch(_) {}
+  } catch (err) {
+    console.error('[status] update failed:', err);
+    alert(err?.message || 'Failed to update status.');
+  }
 }
 
 function capStatus(s) {
@@ -3743,8 +4008,6 @@ function subscribeBadge(key) {
 }
 
 
-
-
 // Call this after (re)rendering any table that contains message buttons
 function ensureMessageBadges() {
   document.querySelectorAll('.msg-btn[data-key]').forEach(a => {
@@ -3767,8 +4030,6 @@ async function markThreadRead(incidentId, reportType) {
     await q.ref.update(updates);
   }
 }
-
-
 
 </script>
 

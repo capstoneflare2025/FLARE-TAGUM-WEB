@@ -233,6 +233,16 @@ body.modal-open { overflow: hidden; }
 
 
 
+.msg-btn{ position:relative; display:inline-flex; align-items:center; }
+.msg-badge{
+  position:absolute; top:-6px; right:-6px;
+  min-width:18px; height:18px; line-height:18px;
+  font-size:12px; border-radius:9999px;
+  background:#ef4444; color:#fff; text-align:center; padding:0 5px;
+}
+.msg-badge.hidden{ display:none; }
+
+
     </style>
 </head>
 <body resetReloadTimer()>
@@ -314,7 +324,9 @@ body.modal-open { overflow: hidden; }
 
 let responseMessageRef;
 let fireSound, emergencySound;
+
 const activeToasts = new Map();
+
 
 // Safe global (won't throw if already defined somewhere else)
 window.FF_ACCOUNTS_BASE = window.FF_ACCOUNTS_BASE
@@ -478,8 +490,9 @@ async function attachFFAdminMessages(db){
           type: 'ffchat',
           reporterName: displayName,
           message: ffPreviewFromMessage(m),
-          sound: null // set to emergencySound if you want a sound
+          sound: null
         });
+
 
         localStorage.setItem(seenKey, id);
       });
