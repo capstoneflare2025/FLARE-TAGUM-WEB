@@ -3223,6 +3223,7 @@ function openAssignModal(incidentId, reportType) {
           closeDetailsModal();
         });
 
+        // New
         // Partial failure notice
         if (failures.length) {
           console.warn('Some assignments failed:', failures);
