@@ -3066,6 +3066,16 @@ if (curStatus === 'Pending') {
   statusActionDiv.appendChild(btn);
 
 } else if (curStatus === 'Ongoing') {
+  // REQUEST BACKUP → open assignment modal
+  const btnBackup = document.createElement('button');
+  btnBackup.className = 'px-4 py-2 rounded mt-2 text-white mr-3';
+  btnBackup.style.backgroundColor = '#F3C011'; // amber
+  btnBackup.onmouseenter = () => (btnBackup.style.backgroundColor = '#d1a500');
+  btnBackup.onmouseleave = () => (btnBackup.style.backgroundColor = '#F3C011');
+  btnBackup.textContent = 'Request Backup';
+  btnBackup.onclick = () => openAssignModal(full.id, reportType);
+  statusActionDiv.appendChild(btnBackup);
+
   // DONE → mark Completed
   const btn = document.createElement('button');
   btn.id = `acceptButton${full.id}`;
@@ -3076,13 +3086,8 @@ if (curStatus === 'Pending') {
   btn.textContent = 'Done';
   btn.onclick = () => updateReportStatus(full.id, reportType, 'Completed');
   statusActionDiv.appendChild(btn);
-
-
-// Note: Received & Completed → no button
-
-
-  statusActionDiv.appendChild(btn);
 }
+
 
 
   // finally, show the modal
@@ -3130,17 +3135,113 @@ function openAssignModal(incidentId, reportType) {
 
   const form = document.getElementById('assignForm');
   if (form) {
+    // reset UI state
     form.reset();
-    // ensure listeners for checkbox changes
+
+    // wire up checkbox changes (fresh each open)
     form.querySelectorAll('input[name="station[]"]').forEach(cb => {
       cb.onchange = updateAssignButton;
     });
-    // start in correct state (disabled until checked)
-    updateAssignButton();
-  }
-  document.getElementById('assignModal')?.classList.remove('hidden');
 
+    // ensure the Assign button starts disabled until a station is selected
+    updateAssignButton();
+
+    // IMPORTANT: own the submit handler here so it works every time the modal opens
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+
+      const btn = document.getElementById('assignSubmitBtn');
+      if (btn) { btn.disabled = true; btn.classList.add('opacity-60', 'cursor-wait'); }
+
+      // Collect multiple selections
+      const selected = Array.from(document.querySelectorAll('input[name="station[]"]:checked'))
+                            .map(i => i.value);
+      const { incidentId, reportType, reportObject } = __assignContext || {};
+
+      if (!selected.length) {
+        alert('Please select at least one station.');
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+        return;
+      }
+      if (!incidentId || !reportType) {
+        alert('Missing context for assignment.');
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+        return;
+      }
+
+      const typeNode = typeNodeFor(reportType);
+      const base = 'TagumCityCentralFireStation/FireFighter/AllFireFighterAccount';
+
+      // payload written into each station account
+      const payload = {
+        ...reportObject,
+        assignedStationAccounts: selected,
+        assignedAt: Date.now(),
+        status: 'Ongoing'
+      };
+
+      try {
+        // 1) write to each selected station (parallel)
+        const writes = selected.map(stKey => {
+          const destRef = firebase.database()
+            .ref(`${base}/${stKey}/AllReport/${typeNode}/${incidentId}`);
+          return destRef.set(payload);
+        });
+
+        const results = await Promise.allSettled(writes);
+        const failures = results.filter(r => r.status === 'rejected');
+
+        if (failures.length === selected.length) {
+          throw new Error('All assignments failed. Check network/Firebase rules.');
+        }
+
+        // 2) flip original collection to Ongoing (once)
+        const n = nodes();
+        const srcPath =
+          reportType === 'fireReports'    ? n.fireReport :
+          reportType === 'otherEmergency' ? n.otherEmergency :
+          reportType === 'emsReports'     ? n.ems :
+          reportType === 'smsReports'     ? n.sms : null;
+
+        if (srcPath) {
+          await firebase.database().ref(`${srcPath}/${incidentId}`).update({
+            status: 'Ongoing',
+            assignedStationAccounts: selected
+          });
+        }
+
+        // 3) UI updates (non-fatal)
+        try {
+          setStatusEverywhere?.(incidentId, reportType, 'Ongoing');
+          const okCount = selected.length - failures.length;
+          showToast?.(`Assigned to ${okCount} station${okCount>1?'s':''}${failures.length?` (${failures.length} failed)`:''}`);
+        } catch(_) {}
+
+        // Close modals
+        queueMicrotask(() => {
+          closeAssignModal();
+          closeDetailsModal();
+        });
+
+        // Partial failure notice
+        if (failures.length) {
+          console.warn('Some assignments failed:', failures);
+          alert(`${failures.length} assignment(s) failed. Check console for details.`);
+        }
+
+      } catch (err) {
+        console.error('[assign] error:', err);
+        alert(err.message || 'Failed to assign.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+      }
+    };
+  }
+
+  // finally show the modal
+  document.getElementById('assignModal')?.classList.remove('hidden');
 }
+
 
 function closeAssignModal() {
   document.getElementById('assignModal')?.classList.add('hidden');
