@@ -11,7 +11,6 @@
     <!-- put this in your main layout <head> -->
     <meta name="station-key" content="{{ session('station') ?? 'TagumCityCentralFireStation' }}">
 
-
     <!-- Preload Bootstrap Icons Font -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin="anonymous">
 

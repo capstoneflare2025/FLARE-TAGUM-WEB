@@ -207,7 +207,8 @@ function openDetailsModal(userId) {
     const userData = snapshot.val();
 
     // Store original data to revert on cancel
-    originalData = { ...userData };
+   originalData = { id: userId, ...userData };
+
 
     // Display user data in the modal (non-editable initially)
     document.getElementById('details-name').textContent = userData.name;
@@ -237,10 +238,13 @@ function toggleEditMode() {
     // Change the "Edit" button to "Save"
     document.getElementById('edit-button').textContent = 'Save';
 
-    // Make the fields editable
-    document.getElementById('details-name').innerHTML = `<input type="text" id="edit-name" class="w-full px-3 py-2 border rounded-md" value="${document.getElementById('details-name').textContent}">`;
-    document.getElementById('details-email').innerHTML = `<input type="email" id="edit-email" class="w-full px-3 py-2 border rounded-md" value="${document.getElementById('details-email').textContent}">`;
-    document.getElementById('details-contact').innerHTML = `<input type="text" id="edit-contact" class="w-full px-3 py-2 border rounded-md" value="${document.getElementById('details-contact').textContent}">`;
+  document.getElementById('details-name').innerHTML = `<input type="text" id="edit-name" class="w-full px-3 py-2 border rounded-md" value="${document.getElementById('details-name').textContent}">`;
+document.getElementById('details-contact').innerHTML = `<input type="text" id="edit-contact" class="w-full px-3 py-2 border rounded-md" value="${document.getElementById('details-contact').textContent}">`;
+
+// Keep email non-editable
+const emailValue = document.getElementById('details-email').textContent;
+document.getElementById('details-email').innerHTML = `<span>${emailValue}</span>`;
+
   } else {
     // Save the changes
     saveChanges();
@@ -249,48 +253,56 @@ function toggleEditMode() {
 
 // Save the changes made during editing
 function saveChanges() {
-  const updatedName = document.getElementById('edit-name').value;
-  const updatedEmail = document.getElementById('edit-email').value;
-  const updatedContact = document.getElementById('edit-contact').value;
+  const updatedName = document.getElementById('edit-name')?.value || originalData.name;
+  const updatedContact = document.getElementById('edit-contact')?.value || originalData.contact;
+  const updatedEmail = originalData.email; // email not editable
 
   // Check if any fields have changed
-  const isChanged = updatedName !== originalData.name || updatedEmail !== originalData.email || updatedContact !== originalData.contact;
+  const isChanged =
+    updatedName !== originalData.name ||
+    updatedContact !== originalData.contact;
 
   if (!isChanged) {
-    // Show toast notification if nothing changed
     alert("No changes made.");
-
-    // Revert the fields back to non-editable
+    // Revert the fields
     document.getElementById('details-name').textContent = originalData.name;
     document.getElementById('details-email').textContent = originalData.email;
     document.getElementById('details-contact').textContent = originalData.contact;
-
-    // Change the button back to "Edit"
     document.getElementById('edit-button').textContent = 'Edit';
     return;
   }
 
-  const userId = originalData.id; // Assuming userId is part of original data
+  // ⚠️ Ask for confirmation before saving changes
+  const confirmSave = confirm("Are you sure you want to save these changes?");
+  if (!confirmSave) {
+    // If the user cancels, revert to non-editable mode
+    document.getElementById('details-name').textContent = originalData.name;
+    document.getElementById('details-email').textContent = originalData.email;
+    document.getElementById('details-contact').textContent = originalData.contact;
+    document.getElementById('edit-button').textContent = 'Edit';
+    return;
+  }
 
+  const userId = originalData.id;
   const userRef = firebase.database().ref('Users');
 
-  // Update the user data
+  // Proceed to save updates
   userRef.child(userId).update({
     name: updatedName,
-    email: updatedEmail,
     contact: updatedContact
-  }).then(() => {
-    // After saving the data, change back to "Edit" mode
+  })
+  .then(() => {
+    alert("User information updated successfully.");
     document.getElementById('edit-button').textContent = 'Edit';
-
-    // Update the fields to non-editable
     document.getElementById('details-name').textContent = updatedName;
     document.getElementById('details-email').textContent = updatedEmail;
     document.getElementById('details-contact').textContent = updatedContact;
-  }).catch((error) => {
+  })
+  .catch((error) => {
     alert("Error updating user: " + error.message);
   });
 }
+
 
 
 // Close the Details Modal
